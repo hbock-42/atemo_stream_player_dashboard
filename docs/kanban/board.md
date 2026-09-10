@@ -7,9 +7,10 @@ The project board is the day-to-day view; these files hold the reasoning. One is
 card, labelled by epic and size, with an Epic field so the board can be grouped by epic.
 Close a card from a commit with `Closes #<n>`.
 
-**Status:** M1 core built. 103 tests pass, `flutter analyze` is clean, the web build
-compiles, and `tool/check_layers.sh` passes. Nothing has been run against the real device
-yet — every spike in EPIC-0 needs the hardware and the office network.
+**Status:** M1 built, plus the non-hardware parts of M3. 163 tests pass (131 app, 32 relay),
+`flutter analyze` is clean, the web build compiles, `tool/check_layers.sh` passes, and CI
+runs all of it. Nothing has been run against the real device — every spike in EPIC-0 needs
+the hardware and the office network.
 
 **Revised 2026-09-10** for two scope changes: playback control
 ([ADR-0004](../adr/0004-bidirectional-control.md)) and browser delivery via a mandatory
@@ -21,7 +22,7 @@ relay ([ADR-0005](../adr/0005-web-delivery-via-relay.md)).
 
 | Backlog | Ready | In Progress | Review | Done |
 |---|---|---|---|---|
-| SPIKE-01…05, WEB-03, WEB-04, EPIC-8, EPIC-9 | CORE-04b, DISC-04, UI-06b | — | everything marked ✅ | — |
+| SPIKE-01…05, POL-02, EPIC-8 | — | — | everything marked ✅ | — |
 
 Nothing moves to Done until it has been seen working against the real Streamplayer.
 "Review" here means built, tested against the fake device, and awaiting hardware.
@@ -73,11 +74,11 @@ EPIC-5 can run in parallel against `FakeSource` from day one.
 | ✅ | CORE-01 | Flutter project scaffold, minimal deps | 1 | S | — |
 | ✅ | CORE-02 | `WidgetsApp` shell with no Material or Cupertino | 1 | S | CORE-01 |
 | ✅ | CORE-03 | Theme tokens and UI primitives incl. slider and disabled states | 1 | M | CORE-02 |
-| ◐ | CORE-04 | App configuration and platform-conditional source factory | 1 | S | CORE-01 |
+| ✅ | CORE-04 | App configuration and platform-conditional source factory | 1 | S | CORE-01 |
 | ✅ | DISC-01 | mDNS browse for `_googlecast._tcp` | 2 | M | CORE-01 |
 | ✅ | DISC-02 | Android multicast lock + permissions | 2 | M | DISC-01 |
 | ✅ | DISC-03 | iOS Info.plist local network entitlements | 2 | S | DISC-01 |
-| ◐ | DISC-04 | Cache last-known address, manual IP fallback | 2 | S | DISC-01 |
+| ✅ | DISC-04 | Cache last-known address, manual IP fallback | 2 | S | DISC-01 |
 | ✅ | CAST-01 | `CastMessage` codec, hand-written | 3 | S | CORE-01 |
 | ✅ | CAST-02 | `CastChannel` — TLS + length-prefix framing | 3 | M | CAST-01 |
 | ✅ | CAST-03 | Handshake to receiver and media namespaces | 3 | M | CAST-02 |
@@ -103,24 +104,24 @@ EPIC-5 can run in parallel against `FakeSource` from day one.
 | ✅ | TEST-01 | Fake CASTV2 device for tests | 6 | M | CAST-02 |
 | ✅ | TEST-02 | Mapper tests incl. malformed payloads | 6 | S | DOM-03 |
 | ✅ | TEST-03 | Enforce layer purity and the no-LAUNCH rule | 6 | S | CORE-02 |
-| ◐ | TEST-04 | CI: analyze, test, build android + ios + **web** | 6 | S | TEST-03 |
+| ✅ | TEST-04 | CI: analyze, test, build android + ios + **web** | 6 | S | TEST-03 |
 | ✅ | TEST-05 | Command and optimistic-reconcile tests | 6 | M | STATE-02, TEST-01 |
 | ✅ | RELAY-01 | Headless relay server reusing `cast/` | 7 | M | CAST-06 |
 | ✅ | RELAY-02 | WebSocket fan-out of `NowPlaying` JSON | 7 | M | RELAY-01 |
 | ✅ | RELAY-03 | `RelaySource` client | 7 | S | RELAY-02, DOM-02 |
-| ◐ | RELAY-04 | Relay deployment, stable hostname, runbook | 7 | M | RELAY-02 |
+| ✅ | RELAY-04 | Relay deployment, stable hostname, runbook | 7 | M | RELAY-02 |
 | ✅ | RELAY-05 | Inbound command channel, LAN-only authorisation | 7 | M | RELAY-02, CAST-07 |
 | ✅ | RELAY-06 | Serve the Flutter Web bundle from the relay | 7 | S | RELAY-02, WEB-01 |
 | ✅ | WEB-01 | Flutter Web build with `dart:io` excluded | 10 | M | CORE-04, RELAY-03 |
 | ✅ | WEB-02 | Zero-config relay URL from page origin | 10 | S | WEB-01 |
-| ○ | WEB-03 | Browser gotchas: autoplay-free, wake lock, mobile Safari | 10 | M | WEB-01 |
-| ○ | WEB-04 | Add-to-home-screen manifest | 10 | S | WEB-01 |
+| ✅ | WEB-03 | Browser gotchas: autoplay-free, wake lock, mobile Safari | 10 | M | WEB-01 |
+| ✅ | WEB-04 | Add-to-home-screen manifest | 10 | S | WEB-01 |
 | ○ | SPOT-01 | Spotify OAuth for the speaker's account | 8 | M | SPIKE-01 |
 | ○ | SPOT-02 | `SpotifyWebApiSource` incl. control endpoints | 8 | M | SPOT-01, DOM-02 |
 | ○ | SPOT-03 | Compose Cast + Spotify sources | 8 | M | SPOT-02 |
-| ○ | POL-01 | Keep-awake / kiosk mode for a wall display | 9 | S | UI-01 |
+| ✅ | POL-01 | Keep-awake / kiosk mode for a wall display | 9 | S | UI-01 |
 | ○ | POL-02 | Native builds for people who want an icon | 9 | S | TEST-04 |
-| ○ | POL-03 | Diagnostics screen | 9 | S | STATE-01 |
+| ✅ | POL-03 | Diagnostics screen | 9 | S | STATE-01 |
 
 Sizes: S ≈ half a day, M ≈ 1–2 days, L ≈ 3+.
 
@@ -128,9 +129,8 @@ Sizes: S ≈ half a day, M ≈ 1–2 days, L ≈ 3+.
 
 | Gap | Why |
 |---|---|
-| Every spike (EPIC-0) | Needs the physical device and the office network. These are yours to run; SPIKE-05 first. |
-| CORE-04, DISC-04 — persistence | Config and the last-known address are held in memory. Persisting them is a small change gated on SPIKE-03's answer about whether the device keeps advertising while idle. |
-| TEST-04 — CI | `tool/check_layers.sh` runs locally and the commands are known; no CI file is committed because the host is not chosen. |
-| RELAY-04 — deployment | The runbook is written (`relay/README.md`); install-as-a-service and the hostname decision need OQ-7 answered on the real network. |
-| WEB-03, WEB-04 | Browser lifecycle and add-to-home-screen. Worth doing once the relay is actually deployed and someone has opened it on a phone. |
-| Native builds | Android needs the SDK, which is not installed on this machine; iOS was not built. The web path is the primary one regardless (ADR-0005). |
+| Every spike (EPIC-0) | Needs the physical device and the office network. Yours to run; SPIKE-05 first, since AP client isolation would break the approach outright. |
+| EPIC-8 (Spotify Web API) | Conditional by design. Whether it is needed at all depends on SPIKE-01 and SPIKE-04; building it now would be guesswork. |
+| POL-02 (native distribution) | The Android APK does build locally and in CI. What remains is signing, an iOS distribution route, and an icon — worth doing once someone actually wants an installed app rather than the browser. |
+| Verification on hardware | 47 cards are in Review, not Done. Everything is tested against the fake CASTV2 device and a local relay; nothing has met the real Streamplayer. |
+| Native wake lock | The wall display keeps the screen awake on web via the Screen Wake Lock API. The native equivalent needs a plugin dependency and is deliberately deferred. |

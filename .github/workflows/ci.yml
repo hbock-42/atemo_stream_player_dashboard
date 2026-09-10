@@ -33,7 +33,7 @@ jobs:
       - name: App — flutter analyze (failing, not advisory)
         run: flutter analyze --fatal-infos
 
-      - name: App — flutter test (71 tests)
+      - name: App — flutter test
         run: flutter test
 
       - name: Relay — pub get
@@ -42,7 +42,7 @@ jobs:
       - name: Relay — dart analyze
         run: cd relay && dart analyze
 
-      - name: Relay — dart test (32 tests)
+      - name: Relay — dart test
         run: cd relay && dart test
 
       - name: Architecture guard (tool/check_layers.sh)
