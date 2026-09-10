@@ -63,6 +63,7 @@ class CastClient {
     this.heartbeatInterval = const Duration(seconds: 5),
     this.livenessTimeout = const Duration(seconds: 15),
     this.connectTimeout = const Duration(seconds: 5),
+    this.onFrame,
     Random? random,
   })  : _channelFactory = channelFactory ??
             ((address) => CastChannel.connect(address.host, port: address.port)),
@@ -73,6 +74,12 @@ class CastClient {
   final Duration heartbeatInterval;
   final Duration livenessTimeout;
   final Duration connectTimeout;
+
+  /// Every inbound frame, before interpretation. Used by the spike tool to
+  /// answer questions the parsed snapshot cannot — such as whether a Spotify
+  /// Connect session says anything at all on the media namespace.
+  final void Function(CastMessage message)? onFrame;
+
   final Random _random;
 
   final StreamController<CastUpdate> _updates = StreamController<CastUpdate>.broadcast();

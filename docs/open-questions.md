@@ -108,3 +108,41 @@ highest-impact unknown remaining and the cheapest to check.
 
 **How we resolve it.** Card [SPIKE-05], early. If client isolation is on, we need a wired
 host or a network change before anything else is worth building.
+
+## Observed on the network, 2026-09-10
+
+Gathered with `dns-sd` from a machine on the same LAN as a real Streamplayer.
+Not a spike result — no CASTV2 socket was opened — but it confirms several
+assumptions the design rests on, and adds one that was not anticipated.
+
+```
+Streamplayer-38067793cb7c81ff4c11baa216b5de90._googlecast._tcp.local.
+  -> 38067793-cb7c-81ff-4c11-baa216b5de90.local.:8009
+  TXT: md=Streamplayer  fn=The Kids 🕺  st=1  rs=Casting: Dor Fodida
+       ca=198660  ve=05  ic=/setup/icon.png  id=38067793…
+```
+
+Confirmed:
+
+- The instance name really is `Streamplayer-<32 hex>`, which is what
+  `kStreamplayerInstance` matches in `mdns_discovery.dart`.
+- The advertised port really is 8009.
+- `fn` carries the owner's friendly name, which is what discovery reads — and
+  it contains an emoji, so anything displaying it must be UTF-8 clean.
+- The device advertises *while casting*. Whether it keeps advertising when idle
+  is still [OQ-3](#oq-3--does-the-devices-mdns-record-survive-standby).
+
+**Unanticipated, and relevant to [OQ-1](#oq-1--does-spotify-connect-surface-through-the-cast-media-namespace):**
+the TXT record carries `st=1` (an app is running) and `rs=` with a
+human-readable status line — here `Casting: Dor Fodida`. That is now-playing
+information available over plain mDNS, with no CASTV2 connection and no sender
+slot consumed. It is coarse — one string, no artist/album split, no artwork —
+but if Spotify Connect turns out to be invisible on the media namespace, this
+is a third fallback alongside the Spotify Web API, and a much cheaper one.
+Worth checking during SPIKE-01 whether `rs` changes for Spotify and Tidal
+sessions.
+
+**Not testable from the development sandbox:** outbound LAN sockets are blocked
+there for interpreted processes — Dart and Python both get `No route to host`
+where `nc` succeeds. The spikes must be run from a normal shell on the office
+network. See [docs/spikes.md](spikes.md).

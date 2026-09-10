@@ -10,6 +10,7 @@ Streamplayer, reachable by anyone on the local network from a browser.
 | [architecture.md](architecture.md) | Layers, module boundaries, the source seam, topology |
 | [protocol.md](protocol.md) | CASTV2 wire format, handshake, commands, failure modes |
 | [open-questions.md](open-questions.md) | Known unknowns and how the design absorbs them |
+| [spikes.md](spikes.md) | How to run the EPIC-0 spikes against the real device |
 | [kanban/board.md](kanban/board.md) | The board: epics, user stories, milestones |
 | [adr/](adr/) | Architecture decision records |
 
