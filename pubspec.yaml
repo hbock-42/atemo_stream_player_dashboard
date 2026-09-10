@@ -21,6 +21,13 @@ version: 1.0.0+1
 environment:
   sdk: ^3.11.4
 
+# The relay is a second package in this repo that reuses lib/cast, lib/domain
+# and lib/discovery unchanged. Declaring it as a workspace member means one
+# `flutter pub get` resolves both, and `flutter analyze` at the root stops
+# reporting the relay's own test files as unresolved.
+workspace:
+  - relay
+
 # Dependencies specify other packages that your package needs in order to work.
 # To automatically upgrade your package dependencies to the latest versions
 # consider running `flutter pub upgrade --major-versions`. Alternatively,

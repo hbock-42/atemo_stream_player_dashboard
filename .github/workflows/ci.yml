@@ -27,7 +27,10 @@ jobs:
           channel: "stable"
           cache: true
 
-      - name: App — pub get
+      # One resolve covers both packages: the relay is a workspace member.
+      # Before that was true, analyze ran ahead of the relay's own pub get and
+      # reported every symbol in relay/test as undefined.
+      - name: Workspace — pub get (app + relay)
         run: flutter pub get
 
       - name: App — flutter analyze (failing, not advisory)
@@ -35,9 +38,6 @@ jobs:
 
       - name: App — flutter test
         run: flutter test
-
-      - name: Relay — pub get
-        run: cd relay && flutter pub get
 
       - name: Relay — dart analyze
         run: cd relay && dart analyze
