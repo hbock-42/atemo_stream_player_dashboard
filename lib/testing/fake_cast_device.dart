@@ -1,14 +1,19 @@
 /// An in-memory CASTV2 receiver, so protocol tests need no hardware and no
 /// music playing in the office.
+///
+/// Lives in `lib/` rather than `test/` so the relay package can drive it too:
+/// the end-to-end test needs one fake device feeding the real client, the real
+/// relay and a real WebSocket client at once, and a `test/` file is not
+/// importable across package boundaries.
 library;
 
 import 'dart:async';
 import 'dart:convert';
 import 'dart:typed_data';
 
-import 'package:atemo_stream_player_viewer/cast/cast_channel.dart';
-import 'package:atemo_stream_player_viewer/cast/cast_message.dart';
-import 'package:atemo_stream_player_viewer/cast/namespaces.dart';
+import '../cast/cast_channel.dart';
+import '../cast/cast_message.dart';
+import '../cast/namespaces.dart';
 
 /// A transport whose inbound bytes the test writes by hand, for exercising the
 /// framing edge cases: two frames in one read, one frame across three reads.

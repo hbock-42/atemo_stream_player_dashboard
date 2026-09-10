@@ -5,7 +5,7 @@ import 'package:atemo_stream_player_viewer/cast/cast_commands.dart';
 import 'package:atemo_stream_player_viewer/cast/cast_snapshot.dart';
 import 'package:flutter_test/flutter_test.dart';
 
-import '../support/fake_cast_device.dart';
+import 'package:atemo_stream_player_viewer/testing/fake_cast_device.dart';
 
 Future<void> settle([int turns = 12]) async {
   for (var i = 0; i < turns; i++) {

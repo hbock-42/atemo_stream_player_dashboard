@@ -4,7 +4,7 @@ import 'package:atemo_stream_player_viewer/cast/cast_client.dart';
 import 'package:atemo_stream_player_viewer/cast/namespaces.dart';
 import 'package:flutter_test/flutter_test.dart';
 
-import '../support/fake_cast_device.dart';
+import 'package:atemo_stream_player_viewer/testing/fake_cast_device.dart';
 
 /// Lets the event loop drain. The handshake is several round trips through
 /// stream controllers, none of which involve real time.

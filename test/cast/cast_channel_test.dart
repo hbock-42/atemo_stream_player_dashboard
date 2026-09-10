@@ -4,7 +4,7 @@ import 'package:atemo_stream_player_viewer/cast/cast_channel.dart';
 import 'package:atemo_stream_player_viewer/cast/cast_message.dart';
 import 'package:flutter_test/flutter_test.dart';
 
-import '../support/fake_cast_device.dart';
+import 'package:atemo_stream_player_viewer/testing/fake_cast_device.dart';
 
 CastMessage message(String payload) => CastMessage(
       sourceId: 'receiver-0',
