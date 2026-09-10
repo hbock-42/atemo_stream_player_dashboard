@@ -42,7 +42,7 @@ Future<void> _run(List<String> arguments) async {
   // client, real mapper, real fan-out, no speaker. Useful for working on the
   // UI, and for showing people what this will look like before it is deployed.
   if (options.containsKey('demo')) {
-    await _serve(_demoSource(), options);
+    await _serve(await _demoSource(options), options);
     return;
   }
 
@@ -62,12 +62,7 @@ Future<void> _run(List<String> arguments) async {
         // Retrying silently forever looks identical to a broken relay. Say
         // what to try, once.
         stderr
-          ..writeln('')
-          ..writeln('  Could not find the Streamplayer over mDNS.')
-          ..writeln('  Either it is powered off, or this network blocks multicast.')
-          ..writeln('  Find it by hand and skip discovery:')
-          ..writeln('      dns-sd -B _googlecast._tcp local')
-          ..writeln('      dart run bin/relay.dart --host <its-ip> --web ../build/web')
+          ..writeln(mdnsTroubleshooting())
           ..writeln('  Still retrying in the background.')
           ..writeln('');
       } else if (cached != null) {
@@ -81,8 +76,24 @@ Future<void> _run(List<String> arguments) async {
   await _serve(source, options);
 }
 
-DirectCastSource _demoSource() {
-  final device = FakeCastDevice();
+Future<DirectCastSource> _demoSource(Map<String, String?> options) async {
+  // The demo should look like the finished thing, and the relay is already
+  // serving the web bundle — so point the fake artwork at an image it really
+  // serves. It has to be the LAN address, not localhost: the browser looking
+  // at this is usually on a different device.
+  final port = int.tryParse(options['port'] ?? '') ?? 8080;
+  final interfaces = await NetworkInterface.list(
+    type: InternetAddressType.IPv4,
+    includeLoopback: false,
+  );
+  final host = interfaces.isEmpty || interfaces.first.addresses.isEmpty
+      ? 'localhost'
+      : interfaces.first.addresses.first.address;
+  final artwork = options['web'] == null ? null : 'http://$host:$port/icons/Icon-512.png';
+
+  final device = FakeCastDevice(
+    mediaStatus: FakeCastDevice.defaultMediaStatus(artworkUrl: artwork),
+  );
 
   // Change the track periodically so the display is visibly alive.
   const tracks = [
@@ -98,7 +109,7 @@ DirectCastSource _demoSource() {
     device
       ..appDisplayName = app
       ..mediaStatus = FakeCastDevice.defaultMediaStatus(
-          title: title, artist: artist, album: album)
+          title: title, artist: artist, album: album, artworkUrl: artwork)
       ..pushReceiverStatus()
       ..pushMediaStatus();
   });

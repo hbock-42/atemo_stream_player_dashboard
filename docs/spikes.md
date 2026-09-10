@@ -11,6 +11,11 @@ separate probe that happens to work.
 cd relay && dart pub get
 ```
 
+> **On macOS, grant Local Network permission first.** System Settings → Privacy
+> & Security → Local Network → enable your terminal app, then quit and reopen
+> it. Without it every mDNS attempt fails with `No route to host` while
+> `dns-sd` still works. See OQ-9.
+>
 > These must be run from a normal shell on the office network. They cannot be
 > run from the development sandbox, which blocks outbound LAN sockets for
 > interpreted processes — Dart and Python both get `No route to host` where

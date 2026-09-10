@@ -249,6 +249,10 @@ class FakeCastDevice extends Stream<Uint8List> implements CastTransport {
     String? artist = 'Bill Evans Trio',
     String? album = 'Waltz for Debby',
     String playerState = 'PLAYING',
+    // Unreachable by default, on purpose: tests assert the artwork fallback,
+    // and a real device serves art from its own address anyway. The demo
+    // passes a URL that actually resolves.
+    String? artworkUrl = 'http://192.168.1.50:8008/artwork.jpg',
   }) =>
       {
         'playerState': playerState,
@@ -259,9 +263,10 @@ class FakeCastDevice extends Stream<Uint8List> implements CastTransport {
             'title': ?title,
             'artist': ?artist,
             'albumName': ?album,
-            'images': [
-              {'url': 'http://192.168.1.50:8008/artwork.jpg'},
-            ],
+            if (artworkUrl != null)
+              'images': [
+                {'url': artworkUrl},
+              ],
           },
         },
       };

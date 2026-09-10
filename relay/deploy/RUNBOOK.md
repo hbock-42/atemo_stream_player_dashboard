@@ -27,6 +27,16 @@ failure mode, not a bug to route around — if remote access is ever genuinely
 wanted, it needs a real design change (see ADR-0006 "Consequences"), not a
 tunnel bolted on.
 
+## macOS hosts need Local Network permission
+
+If the relay runs on a Mac, grant the terminal (or the service's binary) Local
+Network access in System Settings → Privacy & Security → Local Network, and
+restart it. Without it, mDNS discovery fails with `No route to host` on every
+attempt while Apple's own `dns-sd` keeps working — the asymmetry is the tell.
+See OQ-9 in [open-questions.md](../../docs/open-questions.md).
+
+`--host <device-ip>` avoids discovery altogether and is unaffected.
+
 ## Which host
 
 [SPIKE-05](../../docs/kanban/cards/EPIC-0-spikes.md) is where the office

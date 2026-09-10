@@ -96,6 +96,7 @@ Future<void> _discover(int seconds) async {
   }
 
   print('\nfound on $found of $attempts browses');
+  if (found == 0) print(mdnsTroubleshooting());
   if (last != null) {
     // The question that matters: does port 8009 still answer when mDNS does
     // not? If so, a cached address is enough and DISC-04 is required.

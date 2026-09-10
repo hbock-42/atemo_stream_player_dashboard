@@ -57,12 +57,22 @@ class MdnsDiscovery {
     }
   }
 
-  /// Binds the multicast socket, retrying without `reusePort`.
+  /// Binds the multicast socket, and makes it able to actually send.
   ///
-  /// `multicast_dns` asks for `reusePort: true`, which several platforms —
-  /// macOS among them — refuse. The package exists to be overridden here, and
-  /// the retry is the difference between discovery working on someone's laptop
-  /// and silently finding nothing.
+  /// Two platform problems, both of which end in mDNS silently finding
+  /// nothing:
+  ///
+  /// 1. `multicast_dns` asks for `reusePort: true` unconditionally, and
+  ///    several platforms refuse it.
+  /// 2. More seriously: the package adds its `0.0.0.0` listening socket to the
+  ///    list it sends queries on. On macOS a socket bound to `0.0.0.0` has no
+  ///    route to the multicast group, so that send throws `No route to host`
+  ///    and aborts the whole query — before the per-interface sockets, which
+  ///    would have worked, ever get a turn. `dns-sd` succeeds on the same
+  ///    machine because it sets the outgoing multicast interface.
+  ///
+  /// So we set `IP_MULTICAST_IF` on the wildcard socket before handing it
+  /// back, which is the one thing the package does not do for itself.
   static Future<RawDatagramSocket> _bind(
     dynamic host,
     int port, {
@@ -70,13 +80,50 @@ class MdnsDiscovery {
     bool reusePort = false,
     int ttl = 255,
   }) async {
+    RawDatagramSocket socket;
     try {
-      return await RawDatagramSocket.bind(host, port,
+      socket = await RawDatagramSocket.bind(host, port,
           reuseAddress: reuseAddress, reusePort: reusePort, ttl: ttl);
     } on SocketException {
-      return RawDatagramSocket.bind(host, port,
+      socket = await RawDatagramSocket.bind(host, port,
           reuseAddress: reuseAddress, reusePort: false, ttl: ttl);
     }
+
+    if (socket.address.address == InternetAddress.anyIPv4.address) {
+      final outgoing = await _preferredIPv4();
+      if (outgoing != null) {
+        try {
+          socket.setRawOption(RawSocketOption(
+            RawSocketOption.levelIPv4,
+            RawSocketOption.IPv4MulticastInterface,
+            outgoing.rawAddress,
+          ));
+        } on Object {
+          // Best effort: on a platform that does not need this, or refuses it,
+          // the per-interface sockets still carry the query.
+        }
+      }
+    }
+    return socket;
+  }
+
+  /// The address multicast should go out of: the first non-loopback IPv4
+  /// interface that has one.
+  static Future<InternetAddress?> _preferredIPv4() async {
+    try {
+      final interfaces = await NetworkInterface.list(
+        type: InternetAddressType.IPv4,
+        includeLoopback: false,
+      );
+      for (final interface in interfaces) {
+        for (final address in interface.addresses) {
+          if (!address.isLoopback) return address;
+        }
+      }
+    } on Object {
+      // No interfaces is itself an answer: there is nothing to discover on.
+    }
+    return null;
   }
 
   Future<CastAddress?> _browse() async {
@@ -187,4 +234,38 @@ class MdnsDiscovery {
 
   String _instanceLabel(String instance) =>
       instance.split('.').first.replaceAll(RegExp(r'-[0-9a-fA-F]{32}$'), '');
+}
+
+/// What to tell someone whose mDNS finds nothing.
+///
+/// On macOS 15+ this is nearly always the Local Network privacy permission
+/// rather than the network: an unapproved binary's multicast sends are refused
+/// with "No route to host" no matter which interface it binds to, while Apple's
+/// own `dns-sd` keeps working because system binaries are exempt. That
+/// asymmetry — dns-sd finds the device, our code does not — is the tell.
+String mdnsTroubleshooting() {
+  final macOS = Platform.isMacOS;
+  return [
+    '',
+    '  Could not find the Streamplayer over mDNS.',
+    if (macOS) ...[
+      '',
+      '  On macOS this is usually a permission, not a network fault.',
+      '  System Settings > Privacy & Security > Local Network, and enable the',
+      '  app you are running this from (Terminal, iTerm, VS Code, Android',
+      '  Studio...). Quit and reopen it afterwards — the permission is only',
+      '  picked up at launch.',
+      '',
+      '  Confirm it is a permission and not the network:',
+      '      dns-sd -B _googlecast._tcp local',
+      '  dns-sd is an Apple binary and exempt. If it finds the device and this',
+      '  does not, it is the permission.',
+    ] else ...[
+      '  Either it is powered off, or this network blocks multicast.',
+    ],
+    '',
+    '  Or skip discovery entirely:',
+    '      dart run bin/relay.dart --host <its-ip> --web ../build/web',
+    '',
+  ].join('\n');
 }

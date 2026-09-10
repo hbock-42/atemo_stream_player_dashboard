@@ -167,3 +167,36 @@ sessions.
 there for interpreted processes — Dart and Python both get `No route to host`
 where `nc` succeeds. The spikes must be run from a normal shell on the office
 network. See [docs/spikes.md](spikes.md).
+
+## OQ-9 — macOS Local Network permission blocks our mDNS
+
+**Observed 2026-09-10 on macOS 26.1, in a normal terminal — not a sandbox.**
+
+`dart run bin/spike.dart discover` fails every time with
+`SocketException: Send failed (No route to host, errno = 65)`, while
+`dns-sd -B _googlecast._tcp local` on the same machine finds the device
+immediately.
+
+Isolated with a minimal Dart program that sends one datagram to
+`224.0.0.251:5353`: it fails identically whether the socket is bound to
+`0.0.0.0`, to `0.0.0.0` with `IP_MULTICAST_IF` set, or directly to the
+interface address. So it is not the bind, the interface, or the route.
+
+**Most likely cause:** since macOS 15, apps need Local Network permission.
+`dns-sd` is an Apple system binary and exempt; `dart` is not, and inherits the
+permission of whatever launched it (Terminal, iTerm, VS Code…). An unapproved
+process's multicast sends are refused.
+
+**Fix for a user:** System Settings → Privacy & Security → Local Network, enable
+the terminal app, then quit and reopen it — the permission is read at launch.
+
+**Consequences:**
+
+- Not a bug in `mdns_discovery.dart`, so it needs no code change beyond making
+  the failure explain itself, which it now does.
+- **It matters for deployment.** If the relay runs on a Mac, that Mac must
+  grant the permission or discovery never works there either. `--host` sidesteps
+  it entirely. Recorded in the runbook.
+- Still unconfirmed: nobody has yet granted the permission and re-run. Until
+  someone does, this is the best explanation of the evidence rather than a
+  proven cause.
