@@ -1,0 +1,84 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+
+env:
+  FLUTTER_VERSION: "3.41.6"
+
+jobs:
+  build:
+    name: Analyze, test, build (Android + web)
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+
+      # Android SDK, for the debug APK build below.
+      - uses: actions/setup-java@v4
+        with:
+          distribution: "temurin"
+          java-version: "17"
+
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: ${{ env.FLUTTER_VERSION }}
+          channel: "stable"
+          cache: true
+
+      - name: App — pub get
+        run: flutter pub get
+
+      - name: App — flutter analyze (failing, not advisory)
+        run: flutter analyze --fatal-infos
+
+      - name: App — flutter test (71 tests)
+        run: flutter test
+
+      - name: Relay — pub get
+        run: cd relay && flutter pub get
+
+      - name: Relay — dart analyze
+        run: cd relay && dart analyze
+
+      - name: Relay — dart test (32 tests)
+        run: cd relay && dart test
+
+      - name: Architecture guard (tool/check_layers.sh)
+        run: ./tool/check_layers.sh
+
+      # The real guard against dart:io leaking into the browser bundle
+      # (ADR-0005): a leak fails this build at compile time, not at review time.
+      - name: Web — flutter build web
+        run: flutter build web
+
+      - name: Android — flutter build apk --debug
+        run: flutter build apk --debug
+
+  # iOS needs a macos runner, which is slow and far more expensive than the
+  # ubuntu job above. It is split into its own job so it never blocks the
+  # fast feedback loop the main job gives on every push/PR: it only runs on
+  # pushes to main, and its failure does not fail the workflow
+  # (continue-on-error), since main's mergeability must not depend on a slow,
+  # non-authoritative build. Bump this if it starts hiding real breakage.
+  ios:
+    name: Build iOS (debug, no codesign)
+    runs-on: macos-latest
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    continue-on-error: true
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: ${{ env.FLUTTER_VERSION }}
+          channel: "stable"
+          cache: true
+
+      - name: App — pub get
+        run: flutter pub get
+
+      - name: iOS — flutter build ios --debug --no-codesign
+        run: flutter build ios --debug --no-codesign

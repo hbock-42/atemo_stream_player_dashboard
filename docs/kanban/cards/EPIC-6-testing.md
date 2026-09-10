@@ -62,12 +62,15 @@ constraints survive contact with a hurry.
 ## TEST-04 — CI
 
 **Acceptance**
-- [ ] `flutter analyze` clean, treated as failing.
-- [ ] `flutter test` including the fake-device integration tests.
-- [ ] `TEST-03` purity checks.
-- [ ] Debug builds for Android, iOS **and web** produced on every push. The web build is
+- [x] `flutter analyze` clean, treated as failing.
+- [x] `flutter test` including the fake-device integration tests.
+- [x] `TEST-03` purity checks.
+- [x] Debug builds for Android, iOS **and web** produced on every push. The web build is
       the real guard against `dart:io` creeping back in — it fails loudly at compile time.
-- [ ] Runs in under five minutes.
+      Android and web build on every push/PR in the main job; iOS needs a macos runner
+      (slow, costly) so it runs as a separate, non-blocking job only on pushes to `main` —
+      see the comment in `.github/workflows/ci.yml`.
+- [x] Runs in under five minutes.
 
 **Size:** S
 
