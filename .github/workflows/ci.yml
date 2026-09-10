@@ -16,7 +16,7 @@ jobs:
       - uses: actions/checkout@v5
 
       # Android SDK, for the debug APK build below.
-      - uses: actions/setup-java@v4
+      - uses: actions/setup-java@v5
         with:
           # The APK build dominates this job (~4 of its 6 minutes on a cold
           # runner), almost all of it Gradle resolving and compiling from
