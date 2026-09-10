@@ -68,21 +68,21 @@ mechanism and is expected to work regardless, so there is a guaranteed floor.
 try each command and record what happens. Also record what a rejected command looks like on
 the wire, since we need to detect it to revert the optimistic UI.
 
-## OQ-6 — Who is allowed to control the speaker?
+## OQ-6 — Who is allowed to control the speaker? — **RESOLVED 2026-09-10**
 
-**A policy question, not a technical one.** With control shipped, anyone who can open the
-page can pause the office music. In a small office that is probably fine and self-policing.
+**Decision: everyone on the office Wi-Fi may view and control; nobody outside it may do
+either.** No PIN, no accounts. The network is the credential. Recorded as
+[ADR-0006](adr/0006-lan-membership-is-the-auth-boundary.md).
 
-**Options, in increasing order of friction:** open to everyone (default); a shared PIN held
-by the relay, gating command messages only, viewing always open; per-client read-only vs
-control mode chosen at connect.
+Proportionate because the Streamplayer itself has no authentication — anyone on the LAN can
+already control it from any Cast app. We match the existing boundary rather than widening it.
 
-**How the design absorbs it.** The relay is the single place commands pass through
-([RELAY-05]), so this is enforceable in one file whenever you decide you want it. Until
-then, `PlaybackControl` being nullable means a read-only client is already a first-class
-state rather than a retrofit.
+Enforced in three layers by [RELAY-05]: never exposed to the internet; commands rejected
+unless the real socket peer is an RFC1918 address (`X-Forwarded-For` never trusted); and
+`Origin`/`Host` validated on the WebSocket upgrade to defeat DNS rebinding, which is the one
+attack path a LAN-only unauthenticated service still has.
 
-**Decision needed from the user before [RELAY-05] ships.**
+Two properties of the office network now matter to correctness — see [SPIKE-05].
 
 ## OQ-7 — Does the relay host have a stable name on the office network?
 
@@ -90,3 +90,21 @@ The web UI's value depends on people being able to type or bookmark something me
 `http://streamplayer.local:8080` requires working mDNS resolution from the clients, which
 Android has historically been inconsistent about. The fallback is a static IP and a
 bookmark. Card [RELAY-04] resolves this by trying both on real handsets.
+
+## OQ-8 — Is the office Wi-Fi actually the boundary we think it is?
+
+[ADR-0006](adr/0006-lan-membership-is-the-auth-boundary.md) makes Wi-Fi membership the
+credential, which makes two unknowns about the office network load-bearing.
+
+**Guest SSID.** If a guest network shares a subnet with the main one, or is routed to it,
+then "everyone on the office Wi-Fi" quietly includes visitors, contractors, and anyone ever
+given the guest password. If guest is VLAN-isolated, there is no issue. Unknown which
+applies here.
+
+**AP client isolation.** Some office access points block device-to-device traffic entirely.
+If that is enabled, mDNS discovery fails *and* phones cannot reach the relay *and* the relay
+may not reach the speaker — the whole approach stops working, not just one card. This is the
+highest-impact unknown remaining and the cheapest to check.
+
+**How we resolve it.** Card [SPIKE-05], early. If client isolation is on, we need a wired
+host or a network change before anything else is worth building.

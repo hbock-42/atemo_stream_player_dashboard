@@ -151,8 +151,11 @@ anything, **so that** I don't think the app is broken.
       — this is a different situation from an app that lacks a capability, and should look
       different.
 - [ ] A quiet line explains it ("view only").
-- [ ] Reachable states: a source with no control, and (later) a relay client not authorised
-      under [OQ-6](../../open-questions.md#oq-6--who-is-allowed-to-control-the-speaker).
+- [ ] Reachable states: a Spotify source lacking the modify scope, and a relay client
+      refused control by [RELAY-05]'s address or origin checks. Under
+      [ADR-0006](../../adr/0006-lan-membership-is-the-auth-boundary.md) a normal office
+      client always gets control, so this is an edge state — but a real one, and viewing
+      stays available when control is refused.
 - [ ] Developable against `FakeSource(control: null)`.
 
 **Size:** S

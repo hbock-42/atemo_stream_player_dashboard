@@ -37,12 +37,14 @@ relay ([ADR-0005](../adr/0005-web-delivery-via-relay.md)).
 
 ## Milestones
 
-- **M0 — Spikes.** EPIC-0 only, timeboxed to ~1.5 days. Outcome: OQ-1 … OQ-5 answered.
-  May reorder everything after it.
+- **M0 — Spikes.** EPIC-0 only, timeboxed to ~2 days. Outcome: OQ-1 … OQ-5 and OQ-8
+  answered. May reorder everything after it. **[SPIKE-05] runs first** — if the office APs
+  isolate clients, the architecture needs revisiting before anything is built.
 - **M1 — Office-ready.** Someone opens `http://streamplayer.local:8080` on their phone,
   sees the live track, and adjusts the volume. EPIC-1 … EPIC-7, EPIC-10.
-- **M2 — Gap-filling.** EPIC-8 if the spikes require it; control authorisation if OQ-6 is
-  answered "gate it".
+- **M2 — Gap-filling.** EPIC-8 if the spikes require it. Control authorisation is settled
+  — [ADR-0006](../adr/0006-lan-membership-is-the-auth-boundary.md), no PIN — and ships as
+  part of [RELAY-05] in M1.
 - **M3 — Shipped.** Wall display up, native builds distributed, diagnostics in place.
 
 The critical path to a usable thing is **EPIC-1 → EPIC-3 → EPIC-4 → EPIC-7 → EPIC-10**.
@@ -56,6 +58,7 @@ EPIC-5 can run in parallel against `FakeSource` from day one.
 | SPIKE-02 | Find the device's concurrent-sender limit | 0 | S | — |
 | SPIKE-03 | Confirm mDNS behaviour when the device is idle | 0 | S | — |
 | SPIKE-04 | Will the device accept commands from a foreign sender? | 0 | M | — |
+| SPIKE-05 | Characterise the office network — **do first** | 0 | S | — |
 | CORE-01 | Flutter project scaffold, minimal deps | 1 | S | — |
 | CORE-02 | `WidgetsApp` shell with no Material or Cupertino | 1 | S | CORE-01 |
 | CORE-03 | Theme tokens and UI primitives incl. slider and disabled states | 1 | M | CORE-02 |
@@ -95,7 +98,7 @@ EPIC-5 can run in parallel against `FakeSource` from day one.
 | RELAY-02 | WebSocket fan-out of `NowPlaying` JSON | 7 | M | RELAY-01 |
 | RELAY-03 | `RelaySource` client | 7 | S | RELAY-02, DOM-02 |
 | RELAY-04 | Relay deployment, stable hostname, runbook | 7 | M | RELAY-02 |
-| RELAY-05 | Inbound command channel and authorisation hook | 7 | M | RELAY-02, CAST-07 |
+| RELAY-05 | Inbound command channel, LAN-only authorisation | 7 | M | RELAY-02, CAST-07 |
 | RELAY-06 | Serve the Flutter Web bundle from the relay | 7 | S | RELAY-02, WEB-01 |
 | WEB-01 | Flutter Web build with `dart:io` excluded | 10 | M | CORE-04, RELAY-03 |
 | WEB-02 | Zero-config relay URL from page origin | 10 | S | WEB-01 |

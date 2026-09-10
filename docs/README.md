@@ -38,6 +38,13 @@ who wants an icon. They can connect directly to the device or through the relay.
   Other commands — pause, skip, volume — are supported. [ADR-0004](adr/0004-bidirectional-control.md).
 - **Controls are capability-gated** from `supportedMediaCommands`, never fired blind.
 - **The data source is swappable.** UI depends on `NowPlayingSource`, never on Cast.
+- **The LAN is the credential.** Everyone on the office Wi-Fi may view and control; nobody
+  outside may do either. No PIN, no accounts — the speaker itself has no auth, so this
+  matches the existing boundary. Enforced by three layers in [RELAY-05], including an
+  `Origin`/`Host` check against DNS rebinding.
+  [ADR-0006](adr/0006-lan-membership-is-the-auth-boundary.md).
+- **Never expose the relay to the internet.** No port forward, no UPnP, no tunnel. Control
+  fails closed if one is ever added.
 
 ## Given facts (do not re-research)
 

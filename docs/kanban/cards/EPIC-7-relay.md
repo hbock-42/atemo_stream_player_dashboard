@@ -77,17 +77,25 @@ The relay is now a single point of failure for everyone. This card is why that's
       says "the page is stuck".
 - [ ] Health endpoint reporting device connection state, client count, and uptime.
 - [ ] Structured logs survive restart, so a 3am failure is diagnosable in the morning.
+- [ ] The runbook states plainly that the relay must not be port-forwarded or tunnelled,
+      and why — layer 1 of [ADR-0006](../../adr/0006-lan-membership-is-the-auth-boundary.md).
+- [ ] Relay host chosen from [SPIKE-05]'s candidates; wired preferred.
 
 **Size:** M
 
 ---
 
-## RELAY-05 — Inbound command channel and authorisation hook
+## RELAY-05 — Inbound command channel and LAN-only authorisation
 
 **As** a user, **I want** the buttons on the web page to actually control the speaker,
 **so that** the web UI is a remote and not just a display.
 
-Depends on [CAST-07]. Policy: [OQ-6](../../open-questions.md#oq-6--who-is-allowed-to-control-the-speaker).
+**As** the office, **I want** control to stop at the front door, **so that** the internet
+can't touch our speaker.
+
+Depends on [CAST-07]. Policy decided:
+[ADR-0006](../../adr/0006-lan-membership-is-the-auth-boundary.md) — everyone on the office
+Wi-Fi may view and control, nobody outside may do either. No PIN, no accounts.
 
 **Acceptance**
 - [ ] The WebSocket carries client→relay command messages in a small typed envelope,
@@ -97,11 +105,30 @@ Depends on [CAST-07]. Policy: [OQ-6](../../open-questions.md#oq-6--who-is-allowe
 - [ ] Volume commands from multiple clients are coalesced sanely rather than fighting.
 - [ ] Command results and the resulting status broadcast to **all** clients, so two people
       looking at the page see the same thing.
-- [ ] An authorisation hook exists as a single injection point — one function that decides
-      whether a client may command — defaulting to "everyone may", pending the user's
-      answer on OQ-6. Unauthorised clients receive `control: null` at connect, which [UI-09]
-      already renders.
-- [ ] `LAUNCH`/`LOAD` are unrepresentable in the envelope, not merely rejected.
+- [ ] Authorisation is a single injection point — one function deciding whether a client
+      may command — so a PIN could be added later in one file. Its default implementation
+      is the three layers below.
+- [ ] **Layer 1:** the relay is not exposed to the internet. No port forward, no UPnP
+      (verified in [SPIKE-05]), no tunnel. Documented in [RELAY-04]'s runbook as a thing
+      not to change casually.
+- [ ] **Layer 2:** commands are rejected unless the *actual socket peer* is an RFC1918
+      private address. `X-Forwarded-For` is explicitly never consulted — it is spoofable.
+      Consequence, and a deliberate one: putting a tunnel in front of the relay disables
+      control automatically rather than granting it to the internet.
+- [ ] **Layer 3 — DNS rebinding defence.** `Origin` on the WebSocket upgrade is validated
+      against an allowlist of the relay's own origins; a cross-origin upgrade is rejected.
+      `Host` is validated against expected hostnames and IPs. This is the one remote attack
+      path a LAN-only unauthenticated service still has, so it is a required criterion, not
+      a nice-to-have.
+- [ ] Requests with no `Origin` header (the native app, not a browser) are accepted only
+      after the layer-2 peer check passes.
+- [ ] A rejected client still receives state — it can watch, it just gets `control: null`,
+      which [UI-09] already renders. Viewing and controlling are separable in the code even
+      though today's policy grants both together.
+- [ ] `LAUNCH`/`LOAD` are unrepresentable in the envelope, not merely rejected — so even a
+      fully authorised client cannot make the speaker play arbitrary audio.
+- [ ] Tested: a command from a non-private peer address is refused; a cross-origin upgrade
+      is refused; a normal phone on the office Wi-Fi works.
 
 **Size:** M
 

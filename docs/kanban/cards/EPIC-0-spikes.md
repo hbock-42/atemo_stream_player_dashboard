@@ -94,3 +94,33 @@ if [SPIKE-01] found them visible at all.
 - [ ] OQ-5 updated.
 
 **Size:** M
+
+---
+
+## SPIKE-05 — Characterise the office network
+
+**As** the developer, **I want** to know whether the office Wi-Fi permits device-to-device
+traffic and whether guests share the subnet, **so that** the relay topology and the
+authorisation model both rest on facts.
+
+Made load-bearing by [ADR-0006](../../adr/0006-lan-membership-is-the-auth-boundary.md).
+Resolves [OQ-8](../../open-questions.md#oq-8--is-the-office-wi-fi-actually-the-boundary-we-think-it-is).
+**Do this first** — a bad answer invalidates the architecture, not just a card.
+
+**Acceptance**
+- [ ] **AP client isolation:** from a phone on office Wi-Fi, ping and open a TCP connection
+      to another device on the same network. If blocked, discovery, the relay and possibly
+      the speaker connection are all dead, and a network change or a wired relay host is a
+      prerequisite for everything else. Record the answer before any other work starts.
+- [ ] **mDNS across the subnet:** confirm `_googlecast._tcp` is visible from a phone, not
+      only from a laptop on Ethernet. Some APs filter multicast.
+- [ ] **Guest SSID:** determine whether a guest network exists and whether it can reach the
+      main subnet. Report to the user — it decides whether "everyone on the Wi-Fi" matches
+      their intent, and that is their call, not ours.
+- [ ] **UPnP:** confirm the router will not auto-expose the relay's port. ADR-0006 layer 1
+      depends on this.
+- [ ] Candidate relay hosts identified, with a note on whether each is wired or wireless
+      and whether it stays powered.
+- [ ] OQ-8 updated; ADR-0006 amended if any assumption fails.
+
+**Size:** S
