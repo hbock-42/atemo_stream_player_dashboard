@@ -143,11 +143,30 @@ class RelaySource with ReplayLatestSource implements NowPlayingSource {
         _controlGranted = decoded['canControl'] != false;
         return;
       }
-      emit(NowPlaying.fromJson(decoded));
+      emit(NowPlaying.fromJson(_resolveArtwork(decoded)));
     } on FormatException {
       // A malformed frame from the relay is not worth dropping the connection
       // for; the next state message will correct the display.
     }
+  }
+
+  /// Makes the relay's artwork path absolute.
+  ///
+  /// The relay proxies album art from its own origin and sends a root-relative
+  /// path. `Image.network` needs an absolute URL, and this source is the only
+  /// layer that knows where the relay is — the UI must not have to.
+  Map<String, dynamic> _resolveArtwork(Map<String, dynamic> json) {
+    final artwork = json['artworkUrl'];
+    if (artwork is! String || !artwork.startsWith('/')) return json;
+    return {...json, 'artworkUrl': '$httpOrigin$artwork'};
+  }
+
+  /// The relay's HTTP origin, derived from the socket URL it was given.
+  String get httpOrigin {
+    final socket = Uri.parse(url);
+    final scheme = socket.scheme == 'wss' ? 'https' : 'http';
+    final port = socket.hasPort ? ':${socket.port}' : '';
+    return '$scheme://${socket.host}$port';
   }
 
   void _scheduleReconnect(String reason) {

@@ -119,7 +119,7 @@ Future<Uint8List> _capture(
   await send('Page.navigate', {'url': url});
   // CanvasKit and the WebSocket handshake both need a moment; the app has to
   // have received a state before there is anything worth looking at.
-  await Future<void>.delayed(const Duration(seconds: 6));
+  await Future<void>.delayed(Duration(seconds: int.parse(Platform.environment['SHOT_WAIT'] ?? '6')));
 
   final shot = await send('Page.captureScreenshot', {'format': 'png'});
   await socket.close();

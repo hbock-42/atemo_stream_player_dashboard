@@ -11,6 +11,7 @@
 library;
 
 import 'dart:async';
+import 'dart:convert';
 
 import 'package:atemo_stream_player_viewer/cast/cast_address.dart';
 import 'package:atemo_stream_player_viewer/cast/cast_channel.dart';
@@ -75,10 +76,25 @@ void main() {
             'or the browser renders controls it cannot use');
   });
 
-  test('artwork and timings survive serialisation', () async {
+  test('artwork is proxied through the relay, not left on the device', () async {
     final playing = await waitFor<Playing>((p) => p.artworkUrl != null);
 
-    expect(playing.artworkUrl, 'http://192.168.1.50:8008/artwork.jpg');
+    // The device serves art from its own address. That is a different origin
+    // from the relay, a speaker will never send CORS headers, and Flutter web
+    // fetches images through CanvasKit — so the URL that reaches the browser
+    // has to be on the relay's own origin.
+    expect(playing.artworkUrl, isNot(contains('192.168.1.50')));
+    expect(playing.artworkUrl, startsWith('http://127.0.0.1:${relay.boundPort}/art?u='));
+
+    // And it must still name the original, or the proxy cannot fetch it.
+    final encoded = Uri.parse(playing.artworkUrl!).queryParameters['u']!;
+    expect(utf8.decode(base64Url.decode(encoded)),
+        'http://192.168.1.50:8008/artwork.jpg');
+  });
+
+  test('timings survive serialisation', () async {
+    final playing = await waitFor<Playing>((p) => p.duration != null);
+
     expect(playing.duration, const Duration(seconds: 396));
     expect(playing.position, const Duration(milliseconds: 42500));
   });

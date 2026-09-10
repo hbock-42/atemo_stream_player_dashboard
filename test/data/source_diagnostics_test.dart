@@ -11,6 +11,7 @@ import 'package:flutter_test/flutter_test.dart';
 import '../support/manual_source.dart';
 
 void main() {
+  _artworkResolutionTests();
   _relayDiagnosticsTests();
   test('a source with no opinion still reports a truthful link state', () {
     final source = ManualSource();
@@ -66,6 +67,24 @@ void _relayDiagnosticsTests() {
       addTearDown(source.dispose);
 
       expect(source.diagnostics.toReport(), contains('ws://host:9/ws'));
+    });
+  });
+}
+
+void _artworkResolutionTests() {
+  group('relay artwork paths', () {
+    test('a proxied path becomes absolute against the relay origin', () {
+      final source = RelaySource(url: 'ws://streamplayer.local:8080/ws');
+      addTearDown(source.dispose);
+
+      expect(source.httpOrigin, 'http://streamplayer.local:8080');
+    });
+
+    test('wss maps to https', () {
+      final source = RelaySource(url: 'wss://example.com/ws');
+      addTearDown(source.dispose);
+
+      expect(source.httpOrigin, 'https://example.com');
     });
   });
 }

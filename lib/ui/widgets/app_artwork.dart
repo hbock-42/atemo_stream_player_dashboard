@@ -1,9 +1,17 @@
 /// Album artwork, with a designed placeholder.
 ///
-/// Artwork URLs from this device are often device-local plain HTTP rather than
-/// public CDN URLs, which is why Android needs a narrow cleartext exception
-/// for the LAN. Missing, slow or broken artwork must never produce a broken
-/// image or an exception — it falls back to the placeholder.
+/// Artwork comes from the device's own address, which is a different origin
+/// from the relay — so the relay proxies it and sends a path on its own origin
+/// instead. A speaker is never going to send CORS headers, and Flutter web
+/// fetches images through CanvasKit, where a cross-origin image simply does not
+/// load. See `RelayServer._withProxiedArtwork`.
+///
+/// Missing, slow or broken artwork must never produce a broken image or an
+/// exception — it falls back to the placeholder.
+///
+/// Note for anyone debugging this against a headless browser: the placeholder
+/// paints but network images do not, which is a CanvasKit limitation there and
+/// not a fault in this widget. Check in a real browser.
 library;
 
 import 'package:flutter/widgets.dart';

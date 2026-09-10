@@ -57,6 +57,7 @@ const track = Playing(
 );
 
 void main() {
+  _artworkProxyTests();
   late StubSource source;
   late RelayServer server;
 
@@ -231,5 +232,82 @@ void main() {
     expect(body['state']['state'], 'playing');
 
     await socket.close();
+  });
+}
+
+void _artworkProxyTests() {
+  group('artwork proxy', () {
+    late StubSource source;
+    late RelayServer server;
+
+    setUp(() async {
+      source = StubSource();
+      server = RelayServer(source: source, port: 0);
+      await server.start();
+    });
+
+    tearDown(() => server.stop());
+
+    Future<Map<String, dynamic>> firstState() async {
+      final socket = await WebSocket.connect('ws://127.0.0.1:${server.boundPort}/ws');
+      final messages = StreamQueue(socket.map((d) => jsonDecode(d as String)));
+      await messages.next; // hello
+      final state = await messages.next as Map<String, dynamic>;
+      await socket.close();
+      return state;
+    }
+
+    test('device artwork is rewritten to this relay', () async {
+      source.push(const Playing(
+        title: 'A Track',
+        artworkUrl: 'http://192.168.1.131:8008/art.jpg',
+      ));
+
+      final state = await firstState();
+
+      // A speaker will never send CORS headers, and Flutter web fetches images
+      // through CanvasKit — so a cross-origin URL simply does not load.
+      expect(state['artworkUrl'], startsWith('/art?u='));
+    });
+
+    test('a public URL is left alone rather than proxied', () async {
+      // Proxying arbitrary URLs would make the relay an open proxy for anyone
+      // on the LAN.
+      source.push(const Playing(
+        title: 'A Track',
+        artworkUrl: 'https://i.scdn.co/image/abc.jpg',
+      ));
+
+      expect((await firstState())['artworkUrl'], 'https://i.scdn.co/image/abc.jpg');
+    });
+
+    test('no artwork stays absent', () async {
+      source.push(const Playing(title: 'A Track'));
+      expect((await firstState())['artworkUrl'], isNull);
+    });
+
+    test('a public target is refused at the endpoint too', () async {
+      final url = base64Url.encode(utf8.encode('http://example.com/x.png'));
+      final client = HttpClient();
+      final response = await (await client
+              .getUrl(Uri.parse('http://127.0.0.1:${server.boundPort}/art?u=$url')))
+          .close();
+      await response.drain<void>();
+      client.close();
+
+      expect(response.statusCode, HttpStatus.badRequest,
+          reason: 'the relay must not fetch arbitrary internet URLs on request');
+    });
+
+    test('a malformed parameter is refused', () async {
+      final client = HttpClient();
+      final response = await (await client
+              .getUrl(Uri.parse('http://127.0.0.1:${server.boundPort}/art?u=%%%')))
+          .close();
+      await response.drain<void>();
+      client.close();
+
+      expect(response.statusCode, HttpStatus.badRequest);
+    });
   });
 }

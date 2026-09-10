@@ -100,9 +100,94 @@ class RelayServer {
 
   void _onState(NowPlaying state) {
     _latest = state;
-    final payload = jsonEncode(state.toJson());
+    final payload = jsonEncode(_withProxiedArtwork(state.toJson()));
     for (final client in _clients.toList()) {
       client.send(payload);
+    }
+  }
+
+  /// Rewrites the artwork URL to point at this relay.
+  ///
+  /// The device serves artwork from its own address, which is a different
+  /// origin from the relay. Flutter web fetches images through CanvasKit, so a
+  /// cross-origin image needs CORS headers — and a speaker is never going to
+  /// send them. Serving it from here makes it same-origin.
+  ///
+  /// It also means a browser that cannot reach the device directly — on a
+  /// guest VLAN, say — still gets the artwork, since only the relay needs a
+  /// route to the speaker.
+  Map<String, dynamic> _withProxiedArtwork(Map<String, dynamic> json) {
+    final url = json['artworkUrl'];
+    if (url is! String || url.isEmpty) return json;
+    final target = Uri.tryParse(url);
+    if (target == null || !_isProxyable(target)) return json;
+    return {
+      ...json,
+      'artworkUrl': '/art?u=${base64Url.encode(utf8.encode(url))}',
+    };
+  }
+
+  /// Only private hosts, and only http(s).
+  ///
+  /// Without this the relay is an open proxy: anyone on the LAN could ask it
+  /// to fetch any URL on the internet and read the response through it.
+  static bool _isProxyable(Uri target) {
+    if (target.scheme != 'http' && target.scheme != 'https') return false;
+    final address = InternetAddress.tryParse(target.host);
+    if (address != null) return AccessPolicy.isPrivateAddress(address);
+    // A bare hostname could resolve anywhere; only .local is safely LAN-ish.
+    return target.host.toLowerCase().endsWith('.local');
+  }
+
+  Future<void> _serveArtwork(HttpRequest request) async {
+    final encoded = request.uri.queryParameters['u'];
+    Uri? target;
+    if (encoded != null) {
+      try {
+        target = Uri.tryParse(utf8.decode(base64Url.decode(encoded)));
+      } on FormatException {
+        target = null;
+      }
+    }
+
+    if (target == null || !_isProxyable(target)) {
+      request.response.statusCode = HttpStatus.badRequest;
+      await request.response.close();
+      return;
+    }
+
+    final client = HttpClient()..connectionTimeout = const Duration(seconds: 5);
+    try {
+      final upstream = await client.getUrl(target).then((r) => r.close())
+          .timeout(const Duration(seconds: 8));
+      if (upstream.statusCode != HttpStatus.ok) {
+        request.response.statusCode = HttpStatus.notFound;
+        await request.response.close();
+        return;
+      }
+      final type = upstream.headers.contentType;
+      // Refuse anything that is not an image: this endpoint exists to serve
+      // album art, not to relay arbitrary content from the LAN.
+      if (type?.primaryType != 'image') {
+        request.response.statusCode = HttpStatus.unsupportedMediaType;
+        await request.response.close();
+        await upstream.drain<void>();
+        return;
+      }
+      request.response.headers
+        ..contentType = type
+        ..set(HttpHeaders.cacheControlHeader, 'max-age=300');
+      await request.response.addStream(upstream);
+    } on Object catch (error) {
+      _log('artwork fetch failed for $target: $error');
+      try {
+        request.response.statusCode = HttpStatus.badGateway;
+      } on StateError {
+        // Headers already sent; nothing to say.
+      }
+    } finally {
+      client.close(force: true);
+      await request.response.close().catchError((_) {});
     }
   }
 
@@ -123,6 +208,10 @@ class RelayServer {
     }
     if (request.uri.path == '/health') {
       await _health(request);
+      return;
+    }
+    if (request.uri.path == '/art') {
+      await _serveArtwork(request);
       return;
     }
     await _serveStatic(request);
@@ -149,7 +238,7 @@ class RelayServer {
     // that may not still gets state — viewing and controlling are separable.
     client
       ..send(jsonEncode({'type': 'hello', 'canControl': client.canControl}))
-      ..send(jsonEncode(_latest.toJson()));
+      ..send(jsonEncode(_withProxiedArtwork(_latest.toJson())));
 
     socket.listen(
       (dynamic message) => _onCommand(client, message),
