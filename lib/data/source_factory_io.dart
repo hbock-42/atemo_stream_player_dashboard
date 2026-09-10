@@ -7,7 +7,6 @@ import 'dart:async';
 import '../cast/cast_client.dart';
 import '../config/app_config.dart';
 import '../discovery/mdns_discovery.dart';
-import '../discovery/platform_multicast_lock.dart';
 import '../domain/now_playing_source.dart';
 import 'address_cache.dart';
 import 'cached_address_resolver.dart';
@@ -26,7 +25,7 @@ NowPlayingSource createSource(
     return RelaySource(url: config.relayUrl!);
   }
 
-  final discovery = MdnsDiscovery(lock: const PlatformMulticastLock());
+  final discovery = MdnsDiscovery();
   final resolver = CachedAddressResolver(
     cache: addressCache,
     discover: discovery.findStreamplayer,

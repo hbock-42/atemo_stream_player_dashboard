@@ -9,21 +9,12 @@ env:
 
 jobs:
   build:
-    name: Analyze, test, build (Android + web)
+    name: Analyze, test, build web
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
       - uses: actions/checkout@v5
 
-      # Android SDK, for the debug APK build below.
-      - uses: actions/setup-java@v5
-        with:
-          # The APK build dominates this job (~4 of its 6 minutes on a cold
-          # runner), almost all of it Gradle resolving and compiling from
-          # scratch. Caching Gradle is the single biggest win available here.
-          cache: gradle
-          distribution: "temurin"
-          java-version: "17"
 
       - uses: subosito/flutter-action@v2
         with:
@@ -57,8 +48,6 @@ jobs:
       - name: Web — flutter build web
         run: flutter build web
 
-      - name: Android — flutter build apk --debug
-        run: flutter build apk --debug
 
   # iOS needs a macos runner, which is slow and far more expensive than the
   # ubuntu job above. It is split into its own job so it never blocks the
@@ -66,23 +55,3 @@ jobs:
   # pushes to main, and its failure does not fail the workflow
   # (continue-on-error), since main's mergeability must not depend on a slow,
   # non-authoritative build. Bump this if it starts hiding real breakage.
-  ios:
-    name: Build iOS (debug, no codesign)
-    runs-on: macos-latest
-    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
-    continue-on-error: true
-    timeout-minutes: 15
-    steps:
-      - uses: actions/checkout@v5
-
-      - uses: subosito/flutter-action@v2
-        with:
-          flutter-version: ${{ env.FLUTTER_VERSION }}
-          channel: "stable"
-          cache: true
-
-      - name: App — pub get
-        run: flutter pub get
-
-      - name: iOS — flutter build ios --debug --no-codesign
-        run: flutter build ios --debug --no-codesign

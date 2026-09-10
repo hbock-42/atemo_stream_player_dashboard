@@ -139,11 +139,12 @@ LAN to hold the connection on its behalf.
 
 ```
 Streamplayer ──TLS:8009── [ relay ]  ──HTTP──> Flutter Web bundle
-   one connection             │      ──WS────> NowPlaying JSON + commands
-                              │
-                       native apps may also
-                       connect directly (DirectCastSource)
+   one connection                    ──WS────> NowPlaying JSON + commands
 ```
+
+The client is web-only ([ADR-0007](adr/0007-web-only-client.md)), so the relay is the only
+thing that ever speaks CASTV2. `DirectCastSource` and `discovery/` are not dead code — they
+are what the relay runs.
 
 - **Web clients** (the default way in): `RelaySource`. Zero configuration — the page derives
   its socket URL from its own origin, since the relay served it. `?wall` on that URL enters

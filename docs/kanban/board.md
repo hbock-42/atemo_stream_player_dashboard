@@ -29,7 +29,7 @@ card is tested against the fake CASTV2 device and a relay on localhost; none has
 real Streamplayer. The five SPIKE cards are what close that gap, and until they run,
 "working" is a claim about the test suite rather than about the hardware.
 
-Legend: ✅ built, tested and merged · ◐ partially built · ○ not started
+Legend: ✅ built, tested and merged · ◐ partially built · ○ not started · ⊘ descoped
 
 ---
 
@@ -78,8 +78,8 @@ EPIC-5 can run in parallel against `FakeSource` from day one.
 | ✅ | CORE-03 | Theme tokens and UI primitives incl. slider and disabled states | 1 | M | CORE-02 |
 | ✅ | CORE-04 | App configuration and platform-conditional source factory | 1 | S | CORE-01 |
 | ✅ | DISC-01 | mDNS browse for `_googlecast._tcp` | 2 | M | CORE-01 |
-| ✅ | DISC-02 | Android multicast lock + permissions | 2 | M | DISC-01 |
-| ✅ | DISC-03 | iOS Info.plist local network entitlements | 2 | S | DISC-01 |
+| ⊘ | DISC-02 | Android multicast lock + permissions | 2 | M | DISC-01 |
+| ⊘ | DISC-03 | iOS Info.plist local network entitlements | 2 | S | DISC-01 |
 | ✅ | DISC-04 | Cache last-known address, manual IP fallback | 2 | S | DISC-01 |
 | ✅ | CAST-01 | `CastMessage` codec, hand-written | 3 | S | CORE-01 |
 | ✅ | CAST-02 | `CastChannel` — TLS + length-prefix framing | 3 | M | CAST-01 |
@@ -122,7 +122,7 @@ EPIC-5 can run in parallel against `FakeSource` from day one.
 | ○ | SPOT-02 | `SpotifyWebApiSource` incl. control endpoints | 8 | M | SPOT-01, DOM-02 |
 | ○ | SPOT-03 | Compose Cast + Spotify sources | 8 | M | SPOT-02 |
 | ✅ | POL-01 | Keep-awake / kiosk mode for a wall display | 9 | S | UI-01 |
-| ◐ | POL-02 | Native builds for people who want an icon | 9 | S | TEST-04 |
+| ⊘ | POL-02 | Native builds for people who want an icon | 9 | S | TEST-04 |
 | ✅ | POL-03 | Diagnostics screen | 9 | S | STATE-01 |
 
 Sizes: S ≈ half a day, M ≈ 1–2 days, L ≈ 3+.
@@ -133,7 +133,7 @@ Sizes: S ≈ half a day, M ≈ 1–2 days, L ≈ 3+.
 |---|---|
 | Every spike (EPIC-0) | Needs the physical device and the office network. Yours to run; SPIKE-05 first, since AP client isolation would break the approach outright. |
 | EPIC-8 (Spotify Web API) | Conditional by design. Whether it is needed at all depends on SPIKE-01 and SPIKE-04; building it now would be guesswork. |
-| POL-02 (native distribution) | Icon, signing and the distribution routes are done — see [distribution.md](../distribution.md). One criterion is blocked: native cannot default to the relay because the relay does not advertise itself over mDNS. |
+| POL-02, DISC-02, DISC-03 | Descoped by [ADR-0007](../adr/0007-web-only-client.md). The Android and iOS targets were built and then removed: the browser was always the way in, and the native platforms cost an iOS distribution story, a keystore to keep for years, and a macOS CI job for something nobody would use. |
 | RELAY-02's mDNS advertisement | Closed with that box unticked. The web path never needed it (the page derives its socket URL from its own origin), but native has nothing to discover, which is what blocks POL-02's last criterion. A pure-Dart mDNS *responder* is real work — `multicast_dns` is a client only. |
 | Verification on hardware | 47 cards are in Review, not Done. Everything is tested against the fake CASTV2 device and a local relay; nothing has met the real Streamplayer. |
 | Native wake lock | The wall display keeps the screen awake on web via the Screen Wake Lock API. The native equivalent needs a plugin dependency and is deliberately deferred. |

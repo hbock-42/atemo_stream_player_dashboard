@@ -26,6 +26,8 @@ gracefully when mDNS is blocked.
 
 ## DISC-02 — Android multicast lock and permissions
 
+> **Descoped by [ADR-0007](../../adr/0007-web-only-client.md)** — the app ships to browsers only, so there is no Android or iOS build to configure. Kept for the gotchas, which are real and would bite again if a native target ever returns.
+
 **As** an Android user, **I want** discovery to work on my phone, **so that** I see the
 track like everyone else.
 
@@ -43,6 +45,8 @@ track like everyone else.
 ---
 
 ## DISC-03 — iOS local network entitlements
+
+> **Descoped by [ADR-0007](../../adr/0007-web-only-client.md)** — the app ships to browsers only, so there is no Android or iOS build to configure. Kept for the gotchas, which are real and would bite again if a native target ever returns.
 
 **As** an iOS user, **I want** the permission prompt to appear and discovery to work,
 **so that** the app isn't silently empty.

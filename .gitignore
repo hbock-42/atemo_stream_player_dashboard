@@ -16,27 +16,7 @@ pubspec.lock
 # macOS
 .DS_Store
 
-# Android
-/android/.gradle/
-/android/local.properties
-/android/app/debug/
-/android/app/profile/
-/android/app/release/
-/android/key.properties
-*.jks
-*.keystore
 
-# iOS
-**/ios/Flutter/.last_build_id
-**/ios/Flutter/App.framework/
-**/ios/Flutter/Flutter.framework/
-**/ios/Flutter/Flutter.podspec
-**/ios/Flutter/ephemeral/
-**/ios/Pods/
-**/ios/.symlinks/
-**/ios/ServiceDefinitions.json
-**/ios/Runner.xcworkspace/xcshareddata/
-**/xcuserdata/
 
 # Secrets — relay OAuth credentials never belong in the repo (EPIC-8)
 .env

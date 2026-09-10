@@ -24,8 +24,9 @@ Streamplayer ──TLS:8009── [ relay, one LAN machine ]
               a dozen phones, any browser, nothing installed
 ```
 
-Native Android/iOS builds ship from the same codebase for the wall display and for anyone
-who wants an icon. They can connect directly to the device or through the relay.
+The client is web-only ([ADR-0007](adr/0007-web-only-client.md)). The wall display is a
+browser in kiosk mode. The relay is a Dart console app on the LAN, and it is what runs the
+CASTV2 client and mDNS discovery.
 
 ## Constraints (non-negotiable)
 

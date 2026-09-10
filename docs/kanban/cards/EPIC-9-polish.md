@@ -38,6 +38,8 @@ trigger by accident. `?wall=0` turns it off again. `Uri.base` is the page URL on
 
 ## POL-02 — Native builds for people who want an icon
 
+> **Descoped by [ADR-0007](../../adr/0007-web-only-client.md)** — the native targets were built (icon, adaptive icon, release signing, verified release APK) and then removed, because ADR-0005 already made the browser the way in and the iOS distribution story has no good answer under a paid developer account.
+
 **Much smaller than it was.** [ADR-0005](../../adr/0005-web-delivery-via-relay.md) makes the
 browser the primary way in, so nobody *has* to install anything — [WEB-04]'s
 add-to-home-screen covers most of what an app icon was for. Optional polish, not a
