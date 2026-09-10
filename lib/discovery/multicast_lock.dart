@@ -1,44 +1,23 @@
 /// Android requires a multicast lock to be held for mDNS to return anything.
 ///
-/// Without it discovery silently returns an empty result — no error, no
-/// warning. The lock is held only for the duration of a browse, never for the
-/// app's lifetime, because it costs battery.
+/// The interface is here, in Flutter-free code, so `discovery/` can be used by
+/// the relay running headless on a desktop or a Pi. The Flutter-backed
+/// implementation lives in `platform_multicast_lock.dart` and is supplied by
+/// the app.
 library;
 
-import 'package:flutter/services.dart';
+abstract interface class MulticastLock {
+  Future<void> acquire();
+  Future<void> release();
+}
 
-class MulticastLock {
-  static const MethodChannel _channel =
-      MethodChannel('com.office.streamplayer/multicast');
+/// Everywhere except Android there is nothing to acquire.
+class NoopMulticastLock implements MulticastLock {
+  const NoopMulticastLock();
 
-  /// Runs [action] with the lock held, releasing it even if [action] throws.
-  static Future<T> hold<T>(Future<T> Function() action) async {
-    await acquire();
-    try {
-      return await action();
-    } finally {
-      await release();
-    }
-  }
+  @override
+  Future<void> acquire() async {}
 
-  static Future<void> acquire() async {
-    try {
-      await _channel.invokeMethod<void>('acquire');
-    } on MissingPluginException {
-      // Not Android: nothing to acquire.
-    } on PlatformException {
-      // Best effort — discovery may still work, and failing here would be a
-      // worse outcome than trying without the lock.
-    }
-  }
-
-  static Future<void> release() async {
-    try {
-      await _channel.invokeMethod<void>('release');
-    } on MissingPluginException {
-      // Not Android.
-    } on PlatformException {
-      // Ignored, as above.
-    }
-  }
+  @override
+  Future<void> release() async {}
 }

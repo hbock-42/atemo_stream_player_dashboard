@@ -22,8 +22,10 @@ if grep -rn --include='*.dart' -E "import .*(\.\./)+cast/" lib/ui/ 2>/dev/null; 
 fi
 
 # --- ADR-0004: never evict the running session -------------------------------
-# Quoted forms only, so prose about the rule doesn't trip the rule.
-if grep -rn --include='*.dart' -E "['\"](LAUNCH|LOAD)['\"]" lib/ relay/ 2>/dev/null; then
+# Quoted forms only, so prose about the rule doesn't trip the rule. Shipping
+# code only: the relay's tests send LAUNCH deliberately, to prove the command
+# envelope refuses it.
+if grep -rn --include='*.dart' -E "['\"](LAUNCH|LOAD)['\"]" lib/ relay/lib/ relay/bin/ 2>/dev/null; then
   report "a LAUNCH or LOAD payload appears in the source (ADR-0004: it would evict the live session)"
 fi
 

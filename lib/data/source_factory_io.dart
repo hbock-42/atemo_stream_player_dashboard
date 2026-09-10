@@ -5,6 +5,7 @@ library;
 import '../cast/cast_address.dart';
 import '../config/app_config.dart';
 import '../discovery/mdns_discovery.dart';
+import '../discovery/platform_multicast_lock.dart';
 import '../domain/now_playing_source.dart';
 import 'direct_cast_source.dart';
 import 'relay_source.dart';
@@ -14,7 +15,7 @@ NowPlayingSource createSource(AppConfig config) {
     return RelaySource(url: config.relayUrl!);
   }
 
-  final discovery = MdnsDiscovery();
+  final discovery = MdnsDiscovery(lock: const PlatformMulticastLock());
   CastAddress? cached;
 
   return DirectCastSource(

@@ -1,0 +1,21 @@
+name: streamplayer_relay
+description: >-
+  Holds the single CASTV2 connection to the office Streamplayer and fans the
+  state out to browsers over a WebSocket, serving the web UI alongside it.
+publish_to: none
+version: 1.0.0
+
+environment:
+  sdk: ^3.9.0
+
+dependencies:
+  # The relay runs the app's protocol code unchanged. This is why lib/cast/,
+  # lib/domain/ and lib/discovery/ carry no Flutter imports, enforced by
+  # tool/check_layers.sh.
+  atemo_stream_player_viewer:
+    path: ../
+
+dev_dependencies:
+  async: ^2.11.0
+  lints: ^5.0.0
+  test: ^1.25.0

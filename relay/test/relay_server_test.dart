@@ -1,0 +1,235 @@
+import 'dart:convert';
+import 'dart:io';
+
+import 'package:async/async.dart';
+
+import 'package:atemo_stream_player_viewer/data/source_base.dart';
+import 'package:atemo_stream_player_viewer/domain/now_playing.dart';
+import 'package:atemo_stream_player_viewer/domain/now_playing_source.dart';
+import 'package:streamplayer_relay/relay_server.dart';
+import 'package:test/test.dart';
+
+class StubSource with ReplayLatestSource implements NowPlayingSource {
+  final StubControl _control = StubControl();
+
+  @override
+  PlaybackControl? get control => _control;
+
+  @override
+  Future<void> start() async {}
+
+  void push(NowPlaying state) => emit(state);
+
+  @override
+  Future<void> dispose() async => closeController();
+}
+
+class StubControl implements PlaybackControl {
+  final List<String> calls = [];
+  double? volume;
+
+  @override
+  void play() => calls.add('play');
+  @override
+  void pause() => calls.add('pause');
+  @override
+  void next() => calls.add('next');
+  @override
+  void previous() => calls.add('previous');
+  @override
+  void seek(Duration position) => calls.add('seek:${position.inMilliseconds}');
+  @override
+  void setVolume(double level) {
+    volume = level;
+    calls.add('setVolume');
+  }
+
+  @override
+  void setMuted(bool muted) => calls.add('setMuted:$muted');
+}
+
+const track = Playing(
+  title: 'Waltz for Debby',
+  artist: 'Bill Evans Trio',
+  castingApp: 'Spotify',
+  volumeLevel: 0.4,
+  capabilities: Capabilities(canPause: true),
+);
+
+void main() {
+  late StubSource source;
+  late RelayServer server;
+
+  setUp(() async {
+    source = StubSource();
+    server = RelayServer(source: source, port: 0);
+    await server.start();
+  });
+
+  tearDown(() => server.stop());
+
+  Future<(WebSocket, StreamQueue)> connect() async {
+    final socket = await WebSocket.connect('ws://127.0.0.1:${server.boundPort}/ws');
+    return (socket, StreamQueue(socket.map((d) => jsonDecode(d as String))));
+  }
+
+  test('a new client is told whether it may control, then given state', () async {
+    source.push(track);
+    final (socket, messages) = await connect();
+
+    final hello = await messages.next as Map<String, dynamic>;
+    expect(hello['type'], 'hello');
+    expect(hello['canControl'], isTrue, reason: 'a LAN client controls, per ADR-0006');
+
+    final state = await messages.next as Map<String, dynamic>;
+    expect(state['state'], 'playing');
+    expect(state['title'], 'Waltz for Debby');
+
+    await socket.close();
+  });
+
+  test('state changes reach every connected client', () async {
+    final (socketA, a) = await connect();
+    final (socketB, b) = await connect();
+    for (final queue in [a, b]) {
+      await queue.next; // hello
+      await queue.next; // initial state
+    }
+
+    source.push(track);
+
+    expect((await a.next as Map)['title'], 'Waltz for Debby');
+    expect((await b.next as Map)['title'], 'Waltz for Debby');
+
+    await socketA.close();
+    await socketB.close();
+  });
+
+  test('the wire format is the domain model, not raw Cast payloads', () async {
+    source.push(track);
+    final (socket, messages) = await connect();
+    await messages.next;
+
+    final state = await messages.next as Map<String, dynamic>;
+    expect(state.keys, contains('capabilities'));
+    expect(state.keys, isNot(contains('mediaSessionId')));
+    expect(state.keys, isNot(contains('supportedMediaCommands')));
+
+    await socket.close();
+  });
+
+  test('commands are forwarded to the source', () async {
+    source.push(track);
+    final (socket, messages) = await connect();
+    await messages.next;
+    await messages.next;
+
+    socket
+      ..add(jsonEncode({'command': 'pause'}))
+      ..add(jsonEncode({'command': 'setVolume', 'level': 0.62}))
+      ..add(jsonEncode({'command': 'seek', 'positionMs': 5000}));
+    await Future<void>.delayed(const Duration(milliseconds: 60));
+
+    expect(source._control.calls, containsAll(['pause', 'setVolume', 'seek:5000']));
+    expect(source._control.volume, 0.62);
+
+    await socket.close();
+  });
+
+  test('LAUNCH and LOAD are not expressible in the envelope', () async {
+    final (socket, messages) = await connect();
+    await messages.next;
+    await messages.next;
+
+    // Even a fully authorised client cannot make the speaker play something
+    // of its own choosing.
+    socket
+      ..add(jsonEncode({'command': 'LAUNCH', 'appId': 'CC1AD845'}))
+      ..add(jsonEncode({'command': 'LOAD', 'media': {'contentId': 'http://evil/a.mp3'}}))
+      ..add(jsonEncode({'command': 'stopSession'}));
+    await Future<void>.delayed(const Duration(milliseconds: 60));
+
+    expect(source._control.calls, isEmpty);
+
+    await socket.close();
+  });
+
+  test('malformed frames are ignored rather than fatal', () async {
+    final (socket, messages) = await connect();
+    await messages.next;
+    await messages.next;
+
+    socket
+      ..add('not json')
+      ..add(jsonEncode([1, 2, 3]))
+      ..add(jsonEncode({'command': 42}))
+      ..add(jsonEncode({'command': 'setVolume', 'level': 'loud'}));
+    await Future<void>.delayed(const Duration(milliseconds: 60));
+
+    expect(source._control.calls, isEmpty);
+    // Still alive and still serving.
+    source.push(track);
+    expect((await messages.next as Map)['title'], 'Waltz for Debby');
+
+    await socket.close();
+  });
+
+  test('one client flooding is rate-limited, not passed through', () async {
+    source.push(track);
+    final server2 = RelayServer(
+      source: source,
+      port: 0,
+      maxCommandsPerWindow: 5,
+      commandWindow: const Duration(seconds: 5),
+    );
+    await server2.start();
+    final socket = await WebSocket.connect('ws://127.0.0.1:${server2.boundPort}/ws');
+
+    for (var i = 0; i < 50; i++) {
+      socket.add(jsonEncode({'command': 'pause'}));
+    }
+    await Future<void>.delayed(const Duration(milliseconds: 100));
+
+    expect(source._control.calls.length, lessThanOrEqualTo(5),
+        reason: 'a misbehaving tab must not flood the device');
+
+    await socket.close();
+    await server2.stop();
+  });
+
+  test('a disconnecting client does not disturb the others', () async {
+    final (socketA, a) = await connect();
+    final (socketB, b) = await connect();
+    for (final queue in [a, b]) {
+      await queue.next;
+      await queue.next;
+    }
+
+    await socketA.close();
+    await Future<void>.delayed(const Duration(milliseconds: 60));
+    expect(server.clientCount, 1);
+
+    source.push(track);
+    expect((await b.next as Map)['title'], 'Waltz for Debby');
+
+    await socketB.close();
+  });
+
+  test('health reports connection state and client count', () async {
+    source.push(track);
+    final (socket, _) = await connect();
+    await Future<void>.delayed(const Duration(milliseconds: 60));
+
+    final client = HttpClient();
+    final response =
+        await (await client.getUrl(Uri.parse('http://127.0.0.1:${server.boundPort}/health')))
+            .close();
+    final body = jsonDecode(await response.transform(utf8.decoder).join());
+    client.close();
+
+    expect(body['clients'], 1);
+    expect(body['state']['state'], 'playing');
+
+    await socket.close();
+  });
+}

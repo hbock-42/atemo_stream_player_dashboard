@@ -7,7 +7,6 @@
 library;
 
 import 'dart:async';
-import 'dart:io';
 
 import 'package:multicast_dns/multicast_dns.dart';
 
@@ -21,20 +20,40 @@ const String kCastService = '_googlecast._tcp.local';
 final RegExp kStreamplayerInstance = RegExp(r'Streamplayer-[0-9a-fA-F]{32}');
 
 class MdnsDiscovery {
-  MdnsDiscovery({this.timeout = const Duration(seconds: 5)});
+  MdnsDiscovery({
+    this.timeout = const Duration(seconds: 5),
+    this.lock = const NoopMulticastLock(),
+  });
 
   final Duration timeout;
+
+  /// Android needs a real one; the relay and iOS do not.
+  final MulticastLock lock;
 
   /// Returns the first Streamplayer found, or null if none appears before the
   /// timeout. Never hangs: a device that is off must produce a decision, not a
   /// spinner that lasts forever.
-  Future<CastAddress?> findStreamplayer() async {
+  Future<CastAddress?> findStreamplayer() {
+    // Errors are absorbed on the inner future rather than around the timeout.
+    // Once timeout has substituted its own result, a later failure of the
+    // original future has no listener and surfaces as an unhandled async
+    // error — which takes the whole process down. A multicast socket the
+    // platform refuses is indistinguishable from "not found" to the caller
+    // anyway.
+    final browse = _withLock(_browse).then<CastAddress?>(
+      (address) => address,
+      onError: (Object _, StackTrace _) => null,
+    );
+    return browse.timeout(timeout, onTimeout: () => null);
+  }
+
+  /// Releases the lock even when the browse throws or times out.
+  Future<CastAddress?> _withLock(Future<CastAddress?> Function() action) async {
+    await lock.acquire();
     try {
-      return await MulticastLock.hold(_browse).timeout(timeout, onTimeout: () => null);
-    } on SocketException {
-      // No network, or the platform refused the multicast socket. Indis-
-      // tinguishable from "not found" as far as the caller is concerned.
-      return null;
+      return await action();
+    } finally {
+      await lock.release();
     }
   }
 

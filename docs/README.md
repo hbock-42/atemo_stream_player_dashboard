@@ -31,8 +31,10 @@ who wants an icon. They can connect directly to the device or through the relay.
 
 - **Flutter, no `material.dart`, no `cupertino.dart`.** Root is `WidgetsApp`. All visual
   primitives are hand-built. [ADR-0003](adr/0003-no-material-cupertino.md).
-- **Minimal dependencies.** Target set: `protobuf`, `multicast_dns`, plus a WebSocket/HTTP
-  server package for the relay. Anything else needs a written reason.
+- **Minimal dependencies.** Actual set: `multicast_dns` and `web_socket_channel`. The
+  CASTV2 protobuf is hand-written, so there is no protobuf runtime and no `protoc` in the
+  build; the relay's HTTP and WebSocket server is `dart:io` alone. Anything else needs a
+  written reason.
 - **Never `LAUNCH`, never `LOAD`.** The app adopts the session already running; launching
   an app would evict whatever the office is listening to. Enforced in CI ([TEST-03]).
   Other commands — pause, skip, volume — are supported. [ADR-0004](adr/0004-bidirectional-control.md).
