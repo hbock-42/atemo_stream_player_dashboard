@@ -11,6 +11,7 @@ import 'dart:math';
 
 import 'package:web_socket_channel/web_socket_channel.dart';
 
+import '../domain/diagnostics.dart';
 import '../domain/now_playing.dart';
 import '../domain/now_playing_source.dart';
 import '../platform/browser.dart';
@@ -62,6 +63,22 @@ class RelaySource with ReplayLatestSource implements NowPlayingSource {
 
   @override
   PlaybackControl? get control => _controlGranted ? _control : null;
+
+  @override
+  SourceMode get mode => SourceMode.relay;
+
+  /// Adds what only this source knows: which relay it is talking to, and
+  /// whether the relay has granted it control. Without these the diagnostics
+  /// screen reports an unknown mode and no endpoint when reached through the
+  /// relay, which is the common case for everyone in the office.
+  @override
+  SourceDiagnostics get diagnostics => super.diagnostics.copyWith(
+        endpoint: url,
+        facts: [
+          DiagnosticFact('relay', url),
+          DiagnosticFact('control', _controlGranted ? 'granted' : 'view only'),
+        ],
+      );
 
   @override
   Future<void> start() async {

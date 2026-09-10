@@ -155,20 +155,33 @@ class SourceDiagnostics {
   /// Recent events, oldest first.
   final List<DiagnosticLogEntry> log;
 
+  SourceDiagnostics copyWith({
+    SourceMode? mode,
+    LinkState? link,
+    String? endpoint,
+    String? lastError,
+    String? sessionId,
+    DateTime? lastMessageAt,
+    List<DiagnosticFact>? facts,
+    List<DiagnosticLogEntry>? log,
+  }) =>
+      SourceDiagnostics(
+        mode: mode ?? this.mode,
+        link: link ?? this.link,
+        endpoint: endpoint ?? this.endpoint,
+        lastError: lastError ?? this.lastError,
+        sessionId: sessionId ?? this.sessionId,
+        lastMessageAt: lastMessageAt ?? this.lastMessageAt,
+        facts: facts ?? this.facts,
+        log: log ?? this.log,
+      );
+
   /// The same snapshot with [more] facts appended.
   ///
   /// Lets a layer above the source add what only it knows — the last command
   /// the device refused, say — without the source having to know it exists.
-  SourceDiagnostics withFacts(List<DiagnosticFact> more) => SourceDiagnostics(
-        mode: mode,
-        link: link,
-        endpoint: endpoint,
-        lastError: lastError,
-        sessionId: sessionId,
-        lastMessageAt: lastMessageAt,
-        facts: [...facts, ...more],
-        log: log,
-      );
+  SourceDiagnostics withFacts(List<DiagnosticFact> more) =>
+      copyWith(facts: [...facts, ...more]);
 
   /// How long the other end has been silent, or null if it has never spoken.
   Duration? silenceFor([DateTime? now]) {
