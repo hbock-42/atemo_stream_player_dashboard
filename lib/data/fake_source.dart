@@ -4,6 +4,7 @@ library;
 
 import 'dart:async';
 
+import '../domain/diagnostics.dart';
 import '../domain/now_playing.dart';
 import '../domain/now_playing_source.dart';
 import 'source_base.dart';
@@ -28,6 +29,9 @@ class FakeSource with ReplayLatestSource implements NowPlayingSource {
 
   @override
   PlaybackControl? get control => _control;
+
+  @override
+  SourceMode get mode => SourceMode.fake;
 
   @override
   Future<void> start() async {

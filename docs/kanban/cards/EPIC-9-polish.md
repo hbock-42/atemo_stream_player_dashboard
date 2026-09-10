@@ -44,10 +44,10 @@ polish, not a release blocker.
 **so that** "it doesn't work" becomes a fixable report.
 
 **Acceptance**
-- [ ] Hidden entry point (long-press).
-- [ ] Shows discovered address, connection state, last error, current `transportId`,
+- [x] Hidden entry point (long-press).
+- [x] Shows discovered address, connection state, last error, current `transportId`,
       seconds since last message, source mode.
-- [ ] A recent log buffer that can be copied to the clipboard.
-- [ ] Contains nothing sensitive; safe to leave in release builds.
+- [x] A recent log buffer that can be copied to the clipboard.
+- [x] Contains nothing sensitive; safe to leave in release builds.
 
 **Size:** S

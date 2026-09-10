@@ -5,6 +5,7 @@ library;
 
 import 'dart:async';
 
+import '../domain/diagnostics.dart';
 import '../domain/now_playing.dart';
 import '../domain/now_playing_source.dart';
 
@@ -55,6 +56,29 @@ mixin ReplayLatestSource implements NowPlayingSource {
     _current = next;
     if (!controller.isClosed) controller.add(next);
   }
+
+  /// What this source can say about itself knowing only the domain state.
+  ///
+  /// A source that tracks a real connection overrides this and fills in the
+  /// address, the session id and the log; everything else still reports a
+  /// truthful link state for free, which is what keeps the diagnostics getter
+  /// from being a burden on every implementation.
+  @override
+  SourceDiagnostics get diagnostics => SourceDiagnostics(
+        mode: mode,
+        link: switch (current) {
+          Connecting() => LinkState.connecting,
+          Unreachable() => LinkState.disconnected,
+          _ => LinkState.connected,
+        },
+        lastError: switch (current) {
+          Unreachable(:final reason) => reason,
+          _ => null,
+        },
+      );
+
+  /// Overridden by sources that know which way they are talking to the device.
+  SourceMode get mode => SourceMode.unknown;
 
   Future<void> closeController() async {
     if (!controller.isClosed) await controller.close();

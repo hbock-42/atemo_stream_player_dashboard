@@ -8,6 +8,7 @@ import 'dart:async';
 
 import '../cast/cast_client.dart';
 import '../cast/cast_commands.dart';
+import '../domain/diagnostics.dart';
 import '../domain/now_playing.dart';
 import '../domain/now_playing_source.dart';
 import 'media_status_mapper.dart';
@@ -29,10 +30,54 @@ class DirectCastSource with ReplayLatestSource implements NowPlayingSource {
   late final _CastPlaybackControl _control;
   StreamSubscription<CastUpdate>? _subscription;
 
+  /// Bounded on purpose: this runs for days on the wall display.
+  final DiagnosticLog _log = DiagnosticLog();
+  LinkState _link = LinkState.connecting;
+  String? _lastError;
+  String? _lastLogged;
+
   @override
   PlaybackControl? get control => _control;
 
   CastClient get client => _client;
+
+  @override
+  SourceMode get mode => SourceMode.direct;
+
+  /// Translates the protocol's own facts into the seam's vocabulary, so the
+  /// diagnostics screen can show a transport id without ever importing
+  /// `lib/cast/`: the id travels as a string, the labels as data.
+  @override
+  SourceDiagnostics get diagnostics {
+    final snapshot = _client.snapshot;
+    return SourceDiagnostics(
+      mode: SourceMode.direct,
+      link: _link,
+      endpoint: _client.address?.toString(),
+      lastError: _lastError,
+      sessionId: snapshot.transportId,
+      lastMessageAt: _client.lastMessageAt,
+      facts: [
+        if (snapshot.deviceName != null) DiagnosticFact('device', snapshot.deviceName!),
+        DiagnosticFact('app', snapshot.appDisplayName ?? 'none'),
+        DiagnosticFact('transport id', snapshot.transportId ?? '—'),
+        DiagnosticFact('media session', snapshot.mediaSessionId?.toString() ?? '—'),
+        DiagnosticFact(
+          'supported commands',
+          '0x${snapshot.supportedMediaCommands.toRadixString(16)}',
+        ),
+      ],
+      log: _log.entries,
+    );
+  }
+
+  /// Skips a line identical to the previous one, so a device that re-sends the
+  /// same status every second cannot flush the whole buffer in a minute.
+  void _note(String message) {
+    if (message == _lastLogged) return;
+    _lastLogged = message;
+    _log.add(message);
+  }
 
   @override
   Future<void> start() async {
@@ -43,14 +88,22 @@ class DirectCastSource with ReplayLatestSource implements NowPlayingSource {
   void _onUpdate(CastUpdate update) {
     switch (update) {
       case CastConnecting():
+        _link = LinkState.connecting;
+        _note('connecting to ${_client.address?.toString() ?? 'the device'}');
         // Only surface "connecting" if we have nothing better to show; a
         // reconnect behind a live screen should not blank it.
         if (current is Unreachable || current is Connecting) {
           emit(Connecting(deviceName: _client.snapshot.deviceName));
         }
       case CastSnapshotUpdate(:final snapshot):
+        _link = LinkState.connected;
+        _note('status: app=${snapshot.appDisplayName ?? 'none'} '
+            'transport=${snapshot.transportId ?? '—'}');
         emit(mapper.map(snapshot));
       case CastDisconnected(:final reason):
+        _link = LinkState.disconnected;
+        _lastError = reason;
+        _note('disconnected: $reason');
         emit(Unreachable(reason: reason));
     }
   }
