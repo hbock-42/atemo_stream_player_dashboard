@@ -88,10 +88,21 @@ class CastClient {
   bool _disposed = false;
 
   CastSnapshot _snapshot = const CastSnapshot();
+  CastAddress? _address;
+  DateTime? _lastMessageAt;
 
   Stream<CastUpdate> get updates => _updates.stream;
   CastSnapshot get snapshot => _snapshot;
   bool get isConnected => _channel != null;
+
+  /// The address we last connected to — kept after a drop, because "which box
+  /// did you find?" is the first diagnostic question.
+  CastAddress? get address => _address;
+
+  /// When the device last sent us anything, of any kind. Since the heartbeat
+  /// runs every few seconds, a long gap here means the socket is dead even if
+  /// TCP has not admitted it yet.
+  DateTime? get lastMessageAt => _lastMessageAt;
 
   Future<void> start() async {
     if (_disposed || _loopFuture != null) return;
@@ -138,6 +149,7 @@ class CastClient {
   Future<void> _serve(CastAddress address) async {
     final channel = await _channelFactory(address).timeout(connectTimeout);
     _channel = channel;
+    _address = address;
     _openConnections.clear();
     _snapshot = CastSnapshot(deviceName: address.friendlyName);
 
@@ -220,6 +232,7 @@ class CastClient {
   // --- inbound ---------------------------------------------------------------
 
   void _onMessage(CastMessage message) {
+    _lastMessageAt = DateTime.now();
     _resetLiveness();
 
     switch (message.namespace) {

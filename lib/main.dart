@@ -10,6 +10,7 @@ import 'package:flutter/widgets.dart';
 import 'config/app_config.dart';
 import 'data/source_factory.dart';
 import 'state/now_playing_controller.dart';
+import 'ui/screens/diagnostics_gate.dart';
 import 'ui/screens/now_playing_screen.dart';
 import 'ui/theme/app_theme.dart';
 
@@ -63,7 +64,13 @@ class _StreamplayerAppState extends State<StreamplayerApp> {
           style: theme.typography.body,
           child: Directionality(
             textDirection: TextDirection.ltr,
-            child: NowPlayingScreen(controller: _controller),
+            // Wrapped here rather than inside the screen: the diagnostics
+            // entry point is an app-level concern, and NowPlayingScreen stays
+            // unaware that it exists.
+            child: DiagnosticsGate(
+              read: () => _controller.diagnostics,
+              child: NowPlayingScreen(controller: _controller),
+            ),
           ),
         ),
       ),

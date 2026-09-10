@@ -10,6 +10,7 @@ import 'dart:async';
 
 import 'package:flutter/widgets.dart';
 
+import '../domain/diagnostics.dart';
 import '../domain/now_playing.dart';
 import '../domain/now_playing_source.dart';
 
@@ -38,6 +39,7 @@ class NowPlayingController extends ChangeNotifier with WidgetsBindingObserver {
   NowPlaying _actual = const Connecting();
   NowPlaying _displayed = const Connecting();
   String? _lastError;
+  String? _lastRefusedCommand;
 
   bool _draggingVolume = false;
   double? _dragVolume;
@@ -50,6 +52,22 @@ class NowPlayingController extends ChangeNotifier with WidgetsBindingObserver {
 
   /// A message to show briefly when a command was refused.
   String? get lastError => _lastError;
+
+  /// The current source's health, for the diagnostics screen.
+  ///
+  /// Goes through the seam: the controller has no idea whether the source
+  /// underneath is a socket to the device or a websocket to the relay, and
+  /// neither does the screen that renders this.
+  SourceDiagnostics get diagnostics {
+    final base = _source?.diagnostics ??
+        const SourceDiagnostics(link: LinkState.disconnected, lastError: 'no source');
+    final refused = _lastRefusedCommand;
+    // Sticky, unlike [lastError], which fades from the main screen after a few
+    // seconds: on a diagnostics screen "what was refused" outlives its toast.
+    return refused == null
+        ? base
+        : base.withFacts([DiagnosticFact('last refused command', refused)]);
+  }
 
   Future<void> start() async {
     WidgetsBinding.instance.addObserver(this);
@@ -194,6 +212,7 @@ class NowPlayingController extends ChangeNotifier with WidgetsBindingObserver {
 
   void _showError(String message) {
     _lastError = message;
+    _lastRefusedCommand = message;
     notifyListeners();
     _errorTimer?.cancel();
     _errorTimer = Timer(errorVisibleFor, () {

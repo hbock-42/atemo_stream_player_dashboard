@@ -5,6 +5,7 @@
 /// Spotify Web API.
 library;
 
+import 'diagnostics.dart';
 import 'now_playing.dart';
 
 /// Thrown when a control action cannot be performed — nothing is playing, the
@@ -46,6 +47,14 @@ abstract interface class NowPlayingSource {
 
   /// Null when this source is read-only.
   PlaybackControl? get control;
+
+  /// How this source is doing, in source-agnostic terms.
+  ///
+  /// On the interface rather than on a side channel so the diagnostics screen
+  /// can be handed any source at all — direct, relay or fake — and still say
+  /// something true. [ReplayLatestSource] supplies a workable default derived
+  /// from [current], so a source only overrides this if it knows more.
+  SourceDiagnostics get diagnostics;
 
   Future<void> start();
   Future<void> dispose();
