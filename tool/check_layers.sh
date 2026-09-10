@@ -30,8 +30,12 @@ if grep -rn --include='*.dart' -E "['\"](LAUNCH|LOAD)['\"]" lib/ relay/lib/ rela
 fi
 
 # --- commands live in exactly one file ---------------------------------------
+# The rule is about *sending*: commands leave the app from one file only.
+# lib/testing/fake_cast_device.dart is a fake receiver — it has to recognise
+# these payloads in order to respond to them, which is the opposite direction.
 offenders=$(grep -rln --include='*.dart' -E "['\"](PAUSE|QUEUE_NEXT|QUEUE_PREV|SET_VOLUME|SEEK)['\"]" lib/ 2>/dev/null \
-  | grep -v 'lib/cast/cast_commands.dart' || true)
+  | grep -v 'lib/cast/cast_commands.dart' \
+  | grep -v 'lib/testing/fake_cast_device.dart' || true)
 if [ -n "$offenders" ]; then
   report "command payloads outside lib/cast/cast_commands.dart:"
   echo "$offenders"
