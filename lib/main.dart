@@ -7,30 +7,53 @@ library;
 
 import 'package:flutter/widgets.dart';
 
-import 'config/app_config.dart';
+import 'config/app_config_controller.dart';
+import 'config/config_store.dart';
+import 'data/address_cache.dart';
+import 'data/reconfigurable_source.dart';
 import 'data/source_factory.dart';
 import 'state/now_playing_controller.dart';
 import 'ui/screens/diagnostics_gate.dart';
 import 'ui/screens/now_playing_screen.dart';
 import 'ui/theme/app_theme.dart';
 
-void main() {
+Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  runApp(const StreamplayerApp());
+
+  // Load persisted config before the first frame, so a device that has not
+  // moved is reachable immediately rather than after a discovery round trip.
+  final store = ConfigStore();
+  final config = AppConfigController(store: store);
+  await config.load();
+
+  runApp(StreamplayerApp(config: config, addressCache: store.addressCache));
 }
 
 class StreamplayerApp extends StatefulWidget {
-  const StreamplayerApp({super.key, this.config = const AppConfig()});
+  const StreamplayerApp({super.key, this.config, this.addressCache});
 
-  final AppConfig config;
+  /// Null in tests and previews, which then run on defaults with no storage.
+  final AppConfigController? config;
+  final AddressCache? addressCache;
 
   @override
   State<StreamplayerApp> createState() => _StreamplayerAppState();
 }
 
 class _StreamplayerAppState extends State<StreamplayerApp> {
+  late final AppConfigController _config =
+      widget.config ?? AppConfigController();
+  late final AddressCache _addressCache =
+      widget.addressCache ?? const NoAddressCache();
+
   late final NowPlayingController _controller = NowPlayingController(
-    createSource: () => createSource(widget.config),
+    // ReconfigurableSource swaps the inner source when the mode changes, so
+    // switching between direct and relay does not need an app restart.
+    createSource: () => ReconfigurableSource(
+      initial: _config.config,
+      configs: _config.changes,
+      build: (config) => createSource(config, addressCache: _addressCache),
+    ),
   );
 
   @override
@@ -42,6 +65,7 @@ class _StreamplayerAppState extends State<StreamplayerApp> {
   @override
   void dispose() {
     _controller.dispose();
+    if (widget.config == null) _config.dispose();
     super.dispose();
   }
 

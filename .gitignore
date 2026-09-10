@@ -50,3 +50,6 @@ relay/credentials.json
 # Relay build artifacts
 relay/.dart_tool/
 relay/pubspec.lock
+
+# Claude Code agent worktrees
+.claude/worktrees/
