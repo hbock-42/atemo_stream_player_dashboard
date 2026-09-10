@@ -9,6 +9,7 @@
 /// probe that happens to work.
 ///
 ///   dart run bin/spike.dart discover [--seconds 20]
+///   dart run bin/spike.dart txt      [--seconds 300]
 ///   dart run bin/spike.dart probe    [--host <ip>] [--seconds 90]
 ///   dart run bin/spike.dart senders  [--host <ip>] [--max 16]
 ///   dart run bin/spike.dart commands [--host <ip>] --i-am-at-the-speaker
@@ -39,6 +40,8 @@ Future<void> main(List<String> arguments) async {
     switch (arguments.first) {
       case 'discover':
         await _discover(int.tryParse(options['seconds'] ?? '') ?? 20);
+      case 'txt':
+        await _txt(int.tryParse(options['seconds'] ?? '') ?? 300);
       case 'probe':
         await _probe(options['host'], int.tryParse(options['seconds'] ?? '') ?? 90);
       case 'senders':
@@ -84,6 +87,14 @@ Future<void> _discover(int seconds) async {
     }
   }
 
+  final txt = await MdnsDiscovery().readTxtRecord();
+  if (txt.isNotEmpty) {
+    print('\nTXT record:');
+    for (final entry in txt.entries) {
+      print('  ${entry.key}=${entry.value}');
+    }
+  }
+
   print('\nfound on $found of $attempts browses');
   if (last != null) {
     // The question that matters: does port 8009 still answer when mDNS does
@@ -104,6 +115,42 @@ Future<bool> _canConnect(String host) async {
     return false;
   }
 }
+
+// --- SPIKE-01, cheap half: does the TXT record track what is playing? ------
+
+Future<void> _txt(int seconds) async {
+  _title('SPIKE-01  mDNS TXT status line');
+  print('Polling the device\'s TXT record for ${seconds}s and printing changes.');
+  print('Switch between Spotify, Tidal, Deezer and SoundCloud while this runs.\n');
+  print('If `rs` tracks the track for every service, that is a service-agnostic');
+  print('fallback needing no CASTV2 connection and no sender slot — worth more');
+  print('than a Web API source per service.\n');
+
+  final discovery = MdnsDiscovery();
+  final deadline = DateTime.now().add(Duration(seconds: seconds));
+  Map<String, String> previous = const {};
+
+  while (DateTime.now().isBefore(deadline)) {
+    final txt = await discovery.readTxtRecord();
+    if (txt.isEmpty) {
+      print('  · no TXT record (device off, or multicast blocked here)');
+    } else if (!_sameStatus(txt, previous)) {
+      final now = DateTime.now().toIso8601String().substring(11, 19);
+      print('  $now  st=${txt['st'] ?? '—'}  rs=${txt['rs'] ?? '—'}');
+      if (previous.isEmpty) {
+        print('           fn=${txt['fn'] ?? '—'}  md=${txt['md'] ?? '—'}');
+      }
+      previous = txt;
+    }
+    await Future<void>.delayed(const Duration(seconds: 3));
+  }
+
+  _record('OQ-1', 'does rs= track the track for EVERY service, or only some?');
+}
+
+/// Only the fields that change while playing; the rest is noise.
+bool _sameStatus(Map<String, String> a, Map<String, String> b) =>
+    a['rs'] == b['rs'] && a['st'] == b['st'];
 
 // --- SPIKE-01 / SPIKE-04 prep: what does each service actually publish? -----
 

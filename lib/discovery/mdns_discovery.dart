@@ -96,21 +96,70 @@ class MdnsDiscovery {
 
   /// The TXT record's `fn` is the name the owner gave the device.
   Future<String?> _friendlyName(MDnsClient client, String instance) async {
+    final txt = await _txt(client, instance);
+    final name = txt['fn']?.trim();
+    return (name == null || name.isEmpty) ? null : name;
+  }
+
+  /// The device's whole TXT record, as key/value pairs.
+  ///
+  /// Worth more than it looks. Alongside `fn`, this device publishes `st`
+  /// (whether an app is running) and `rs` (a human-readable status line such
+  /// as `Casting: <track>`). That is now-playing information over plain mDNS,
+  /// with no CASTV2 connection and no sender slot consumed — a service-agnostic
+  /// fallback if a Connect protocol turns out to be silent on the media
+  /// namespace. See OQ-1.
+  Future<Map<String, String>> readTxtRecord({String? instance}) async {
+    final client = MDnsClient();
+    await client.start();
+    try {
+      final name = instance ?? await _findInstance(client);
+      if (name == null) return const {};
+      return await _txt(client, name);
+    } on Exception {
+      return const {};
+    } finally {
+      client.stop();
+    }
+  }
+
+  Future<String?> _findInstance(MDnsClient client) async {
+    await for (final ptr in client.lookup<PtrResourceRecord>(
+      ResourceRecordQuery.serverPointer(kCastService),
+    )) {
+      if (kStreamplayerInstance.hasMatch(ptr.domainName)) return ptr.domainName;
+    }
+    return null;
+  }
+
+  Future<Map<String, String>> _txt(MDnsClient client, String instance) async {
     try {
       await for (final txt in client.lookup<TxtResourceRecord>(
         ResourceRecordQuery.text(instance),
       )) {
-        for (final line in txt.text.split('\n')) {
-          if (line.startsWith('fn=')) {
-            final name = line.substring(3).trim();
-            if (name.isNotEmpty) return name;
-          }
-        }
+        return parseTxt(txt.text);
       }
     } on Exception {
       // TXT is a nicety; never let it fail the discovery.
     }
-    return null;
+    return const {};
+  }
+
+  /// Splits a TXT record's newline-separated `key=value` lines.
+  ///
+  /// Pure, so it can be tested without a network: values may contain `=`
+  /// (a status line can), keys may repeat, and a malformed line must be
+  /// skipped rather than throwing.
+  static Map<String, String> parseTxt(String text) {
+    final entries = <String, String>{};
+    for (final line in text.split('\n')) {
+      final trimmed = line.trim();
+      if (trimmed.isEmpty) continue;
+      final split = trimmed.indexOf('=');
+      if (split <= 0) continue;
+      entries[trimmed.substring(0, split)] = trimmed.substring(split + 1);
+    }
+    return entries;
   }
 
   String _instanceLabel(String instance) =>

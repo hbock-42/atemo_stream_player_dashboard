@@ -77,16 +77,18 @@ Spotify Connect and Tidal Connect are separate protocols and may publish
 nothing at all. Confirm rather than assume — the two are indistinguishable from
 the outside.
 
-Also worth watching, in a second terminal:
+Run this in a second terminal at the same time:
 
 ```bash
-dns-sd -L "Streamplayer-<hex>" _googlecast._tcp local
+cd relay && dart run bin/spike.dart txt --seconds 600
 ```
 
-The TXT record carries `rs=` with a status line (`Casting: …`). If that tracks
-whatever is playing regardless of service, it is a service-agnostic fallback —
-worth far more than a per-service Web API, which would need separate OAuth for
-each of the four.
+It polls the device's mDNS TXT record and prints `st=` and `rs=` whenever they
+change. `rs=` carries a status line (`Casting: …`). **If it tracks the track for
+every service**, that is a service-agnostic fallback needing no CASTV2
+connection and no sender slot — worth far more than a per-service Web API,
+which would need separate OAuth for each of the four. If it only tracks some,
+record which.
 
 Save the output. Those payloads become the fixtures in
 `test/support/fake_cast_device.dart`.
