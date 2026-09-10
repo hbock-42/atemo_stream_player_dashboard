@@ -1,0 +1,48 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN"
+  "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<!--
+  launchd service for the Streamplayer relay (RELAY-04).
+
+  Assumes the layout produced by deploy/build_and_deploy.sh:
+    /opt/streamplayer-relay/bin/relay        - compiled `dart compile exe` binary
+    /opt/streamplayer-relay/web/             - `flutter build web` output
+    /opt/streamplayer-relay/logs/            - stdout/stderr, see runbook for rotation
+
+  Install: see relay/deploy/RUNBOOK.md "Install on macOS (launchd)".
+-->
+<plist version="1.0">
+  <dict>
+    <key>Label</key>
+    <string>com.streamplayer.relay</string>
+
+    <key>ProgramArguments</key>
+    <array>
+      <string>/opt/streamplayer-relay/bin/relay</string>
+      <string>--port</string>
+      <string>8080</string>
+      <string>--web</string>
+      <string>/opt/streamplayer-relay/web</string>
+    </array>
+
+    <!-- Survive reboot and relaunch if it ever exits, unattended. -->
+    <key>RunAtLoad</key>
+    <true/>
+    <key>KeepAlive</key>
+    <true/>
+
+    <!-- Structured logs, persistent across restarts. Rotate with newsyslog;
+         see the runbook and deploy/streamplayer-relay.newsyslog.conf. -->
+    <key>StandardOutPath</key>
+    <string>/opt/streamplayer-relay/logs/relay.log</string>
+    <key>StandardErrorPath</key>
+    <string>/opt/streamplayer-relay/logs/relay.err.log</string>
+
+    <key>WorkingDirectory</key>
+    <string>/opt/streamplayer-relay</string>
+
+    <!-- Don't hammer restarts if it crash-loops; give it a moment. -->
+    <key>ThrottleInterval</key>
+    <integer>10</integer>
+  </dict>
+</plist>

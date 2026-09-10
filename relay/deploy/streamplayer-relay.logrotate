@@ -1,0 +1,15 @@
+# Log rotation for the relay on Linux, via logrotate(8).
+#
+# Install: sudo cp streamplayer-relay.logrotate /etc/logrotate.d/streamplayer-relay
+# logrotate already runs daily from cron/systemd-timer on any standard distro;
+# no further setup needed. Test with: sudo logrotate -d /etc/logrotate.d/streamplayer-relay
+
+/var/log/streamplayer-relay/*.log {
+    weekly
+    rotate 8
+    compress
+    delaycompress
+    missingok
+    notifempty
+    copytruncate
+}
