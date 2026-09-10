@@ -11,10 +11,15 @@ separate probe that happens to work.
 cd relay && dart pub get
 ```
 
-> **On macOS, grant Local Network permission first.** System Settings → Privacy
-> & Security → Local Network → enable your terminal app, then quit and reopen
-> it. Without it every mDNS attempt fails with `No route to host` while
-> `dns-sd` still works. See OQ-9.
+> **Check the machine first:**
+> ```bash
+> cd relay && dart run bin/spike.dart doctor --host <device-ip>
+> ```
+> It runs Dart and the system tools against the same device and says which side
+> fails. On at least one managed Mac, `ping`, `nc` and `dns-sd` all reach the
+> speaker while every Dart call is refused with `No route to host` — see OQ-9.
+> If that is your machine, run the spikes from somewhere else; nothing in the
+> code will help.
 >
 > These must be run from a normal shell on the office network. They cannot be
 > run from the development sandbox, which blocks outbound LAN sockets for

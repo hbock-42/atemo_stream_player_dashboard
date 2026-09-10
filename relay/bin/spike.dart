@@ -8,6 +8,7 @@
 /// spike is evidence about the code we actually run — not about a separate
 /// probe that happens to work.
 ///
+///   dart run bin/spike.dart doctor   [--host <ip>]
 ///   dart run bin/spike.dart discover [--seconds 20]
 ///   dart run bin/spike.dart txt      [--seconds 300]
 ///   dart run bin/spike.dart probe    [--host <ip>] [--seconds 90]
@@ -40,6 +41,8 @@ Future<void> main(List<String> arguments) async {
     switch (arguments.first) {
       case 'discover':
         await _discover(int.tryParse(options['seconds'] ?? '') ?? 20);
+      case 'doctor':
+        await _doctor(options['host']);
       case 'txt':
         await _txt(int.tryParse(options['seconds'] ?? '') ?? 300);
       case 'probe':
@@ -116,6 +119,113 @@ Future<bool> _canConnect(String host) async {
     return false;
   }
 }
+
+// --- doctor: is it this machine, or is it our code? ------------------------
+
+Future<void> _doctor(String? host) async {
+  _title('doctor  can this machine talk to the speaker at all?');
+
+  final target = host ?? await _discoverForDoctor();
+  if (target == null) {
+    print('  Could not find a device and none was given. Pass --host <ip>.');
+    return;
+  }
+  print('  Testing against $target\n');
+
+  final ping = await _tool('ping', ['-c', '2', '-W', '2000', target]);
+  print(_line('ping (system)', ping));
+
+  final nc = await _tool('nc', ['-z', '-G', '5', target, '8009']);
+  print(_line('nc to :8009 (system)', nc));
+
+  final dart = await _dartConnect(target);
+  print(_line('TCP to :8009 (Dart)', dart));
+
+  final dnsSd = await _dnsSdFinds();
+  print(_line('dns-sd browse (system)', dnsSd));
+
+  final mdns = await MdnsDiscovery(timeout: const Duration(seconds: 6))
+          .findStreamplayer() !=
+      null;
+  print(_line('mDNS browse (Dart)', mdns));
+
+  print('');
+  if (dart && mdns) {
+    print('  Everything works. Run the relay:');
+    print('      dart run bin/relay.dart --host $target --web ../build/web');
+  } else if (!nc && !ping) {
+    print('  The device is not reachable from this machine at all — not a code');
+    print('  problem. Check it is powered on and on this network.');
+  } else if ((nc || ping) && !dart) {
+    // The important verdict: Apple's tools get through and Dart does not.
+    print('  This machine lets Apple\'s own tools reach the device but blocks');
+    print('  Dart. That is the machine, not this code.');
+    print('');
+    print('  Usual causes, in order:');
+    print('   - Endpoint security or a firewall on a managed/work laptop');
+    print('     (Little Snitch, LuLu, CrowdStrike, SentinelOne, Jamf).');
+    print('   - System Settings > Privacy & Security > Local Network: look for');
+    print('     an entry named dart or dartaotruntime, not just your terminal.');
+    print('');
+    print('  Quickest way past it: run the relay somewhere else — a Raspberry');
+    print('  Pi, a personal laptop, any always-on box on the same network.');
+  } else if (dnsSd && !mdns) {
+    print('  TCP works but mDNS does not: discovery is blocked, the device is');
+    print('  not. Use --host $target and skip discovery.');
+  }
+  print('');
+}
+
+Future<String?> _discoverForDoctor() async {
+  stdout.write('  discovering… ');
+  final address = await MdnsDiscovery().findStreamplayer();
+  print(address == null ? 'not found' : '$address');
+  return address?.host;
+}
+
+/// Runs a system tool and reports whether it succeeded. Absent tools count as
+/// "no answer" rather than failure.
+Future<bool> _tool(String executable, List<String> arguments) async {
+  try {
+    final result = await Process.run(executable, arguments)
+        .timeout(const Duration(seconds: 12));
+    return result.exitCode == 0;
+  } on Object {
+    return false;
+  }
+}
+
+Future<bool> _dartConnect(String host) async {
+  try {
+    final socket = await SecureSocket.connect(host, kDefaultCastPort,
+        timeout: const Duration(seconds: 6), onBadCertificate: (_) => true);
+    socket.destroy();
+    return true;
+  } on Object {
+    return false;
+  }
+}
+
+Future<bool> _dnsSdFinds() async {
+  try {
+    final process = await Process.start('dns-sd', ['-B', '_googlecast._tcp', 'local']);
+    final found = Completer<bool>();
+    process.stdout.transform(utf8.decoder).listen((chunk) {
+      if (chunk.contains('Streamplayer') && !found.isCompleted) {
+        found.complete(true);
+      }
+    });
+    final result = await found.future
+        .timeout(const Duration(seconds: 8), onTimeout: () => false);
+    process.kill();
+    return result;
+  } on Object {
+    return false;
+  }
+}
+
+String _line(String label, bool ok) =>
+    '  ${ok ? '✓' : '✗'} ${label.padRight(26)} ${ok ? 'works' : 'fails'}';
 
 // --- SPIKE-01, cheap half: does the TXT record track what is playing? ------
 

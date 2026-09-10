@@ -36,8 +36,16 @@ class CastSnapshotUpdate extends CastUpdate {
 }
 
 class CastDisconnected extends CastUpdate {
-  const CastDisconnected(this.reason);
+  const CastDisconnected(this.reason, {this.detail});
+
+  /// Phrased for a person looking at the screen.
   final String reason;
+
+  /// The underlying error, verbatim. The friendly reason is useless for
+  /// diagnosis — "could not reach the Streamplayer" hides whether the socket
+  /// was refused, timed out, or blocked by the OS, which are three different
+  /// problems with three different fixes.
+  final Object? detail;
 }
 
 class CastUnavailableException implements Exception {
@@ -145,7 +153,7 @@ class CastClient {
       } catch (error) {
         failureStreak++;
         _teardownSession();
-        if (!_disposed) _emit(CastDisconnected(_describe(error)));
+        if (!_disposed) _emit(CastDisconnected(_describe(error), detail: error));
       }
 
       if (_disposed) break;

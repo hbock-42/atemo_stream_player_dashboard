@@ -50,7 +50,16 @@ Future<void> _run(List<String> arguments) async {
   CastAddress? cached;
 
   var warned = false;
+  Object? lastDetail;
   final source = DirectCastSource(
+    // Log the verbatim error once per distinct failure. Whoever is running the
+    // relay needs to know whether the socket was refused, timed out, or
+    // blocked; the screen only ever says "can't reach the speaker".
+    onDetail: (error) {
+      if (error.toString() == lastDetail?.toString()) return;
+      lastDetail = error;
+      stderr.writeln('  connection error: $error');
+    },
     resolveAddress: ({bool forceRefresh = false}) async {
       final manual = options['host'];
       if (manual != null) return CastAddress(host: manual, friendlyName: 'Streamplayer');

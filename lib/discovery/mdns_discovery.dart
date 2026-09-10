@@ -107,14 +107,45 @@ class MdnsDiscovery {
     return socket;
   }
 
+  /// Interfaces a multicast query can actually go out of.
+  ///
+  /// `multicast_dns` defaults to *every* interface, opens a socket on each and
+  /// sends the query on all of them. A Mac has a dozen: VPN tunnels (`utun*`),
+  /// Apple-internal adapters (`anpi*`), AirDrop (`awdl0`), bridges, and
+  /// tunnelling stubs (`gif0`, `stf0`). Sending a multicast datagram out of
+  /// those fails with `No route to host`, and one such failure aborts the whole
+  /// lookup — including the one interface that would have worked.
+  ///
+  /// So we hand it only real LAN interfaces. `dns-sd` succeeds on the same
+  /// machine because it tolerates per-interface failures; we cannot, so we
+  /// avoid them instead.
+  static const _virtualPrefixes = [
+    'utun', 'gif', 'stf', 'awdl', 'anpi', 'bridge', 'ap', 'llw', 'vmnet', 'vnic',
+  ];
+
+  static Future<Iterable<NetworkInterface>> usableInterfaces(
+      InternetAddressType type) async {
+    final interfaces = await NetworkInterface.list(
+      type: type,
+      includeLoopback: false,
+    );
+    final usable = interfaces.where(isUsableInterface).toList();
+    // Better to try everything than nothing if the filter matched too hard.
+    return usable.isEmpty ? interfaces : usable;
+  }
+
+  /// Visible for testing: a real LAN interface, not a tunnel or a stub.
+  static bool isUsableInterface(NetworkInterface interface) {
+    final name = interface.name.toLowerCase();
+    if (_virtualPrefixes.any(name.startsWith)) return false;
+    return interface.addresses.any((a) => !a.isLoopback && !a.isLinkLocal);
+  }
+
   /// The address multicast should go out of: the first non-loopback IPv4
   /// interface that has one.
   static Future<InternetAddress?> _preferredIPv4() async {
     try {
-      final interfaces = await NetworkInterface.list(
-        type: InternetAddressType.IPv4,
-        includeLoopback: false,
-      );
+      final interfaces = await usableInterfaces(InternetAddressType.IPv4);
       for (final interface in interfaces) {
         for (final address in interface.addresses) {
           if (!address.isLoopback) return address;
@@ -128,7 +159,7 @@ class MdnsDiscovery {
 
   Future<CastAddress?> _browse() async {
     final client = MDnsClient(rawDatagramSocketFactory: _bind);
-    await client.start();
+    await client.start(interfacesFactory: usableInterfaces);
     try {
       await for (final ptr in client.lookup<PtrResourceRecord>(
         ResourceRecordQuery.serverPointer(kCastService),
@@ -181,7 +212,7 @@ class MdnsDiscovery {
   /// namespace. See OQ-1.
   Future<Map<String, String>> readTxtRecord({String? instance}) async {
     final client = MDnsClient(rawDatagramSocketFactory: _bind);
-    await client.start();
+    await client.start(interfacesFactory: usableInterfaces);
     try {
       final name = instance ?? await _findInstance(client);
       if (name == null) return const {};

@@ -168,35 +168,46 @@ there for interpreted processes — Dart and Python both get `No route to host`
 where `nc` succeeds. The spikes must be run from a normal shell on the office
 network. See [docs/spikes.md](spikes.md).
 
-## OQ-9 — macOS Local Network permission blocks our mDNS
+## OQ-9 — This Mac blocks Dart's LAN access; Apple's own tools get through
 
-**Observed 2026-09-10 on macOS 26.1, in a normal terminal — not a sandbox.**
+**Observed 2026-09-10 on macOS 26.1 (a managed work laptop), in a normal
+terminal — not a sandbox.**
 
-`dart run bin/spike.dart discover` fails every time with
-`SocketException: Send failed (No route to host, errno = 65)`, while
-`dns-sd -B _googlecast._tcp local` on the same machine finds the device
-immediately.
+Against a Streamplayer that is demonstrably present — it answers `ping`, ARP
+resolves it, `nc -z 192.168.1.131 8009` succeeds, `dns-sd` browses it — every
+Dart network call to it fails:
 
-Isolated with a minimal Dart program that sends one datagram to
-`224.0.0.251:5353`: it fails identically whether the socket is bound to
-`0.0.0.0`, to `0.0.0.0` with `IP_MULTICAST_IF` set, or directly to the
-interface address. So it is not the bind, the interface, or the route.
+```
+  ✓ ping (system)              works
+  ✓ nc to :8009 (system)       works
+  ✗ TCP to :8009 (Dart)        fails      No route to host, errno 65
+  ✓ dns-sd browse (system)     works
+  ✗ mDNS browse (Dart)         fails      No route to host, errno 65
+```
 
-**Most likely cause:** since macOS 15, apps need Local Network permission.
-`dns-sd` is an Apple system binary and exempt; `dart` is not, and inherits the
-permission of whatever launched it (Terminal, iTerm, VS Code…). An unapproved
-process's multicast sends are refused.
+So it is not mDNS specifically, not the multicast route (which exists and points
+at en0), not the interface, and not the CASTV2 client. Plain TCP from Dart to a
+host this machine can ping is refused at the OS level.
 
-**Fix for a user:** System Settings → Privacy & Security → Local Network, enable
-the terminal app, then quit and reopen it — the permission is read at launch.
+**A wrong turn worth recording:** the first hypothesis was the macOS 15+ Local
+Network permission. It is not that — iTerm is enabled in
+Privacy & Security → Local Network and it still fails. Compiling with
+`dart compile exe` and running the binary directly fails identically, so it is
+not `dart run` spawning something unattributed either.
+
+**Most likely now:** endpoint security on a managed laptop allowing Apple-signed
+binaries and blocking unknown ones. Unproven.
+
+**How to check on any machine:** `dart run bin/spike.dart doctor --host <ip>`
+runs Dart and the system tools against the same device and says which side
+fails.
 
 **Consequences:**
 
-- Not a bug in `mdns_discovery.dart`, so it needs no code change beyond making
-  the failure explain itself, which it now does.
-- **It matters for deployment.** If the relay runs on a Mac, that Mac must
-  grant the permission or discovery never works there either. `--host` sidesteps
-  it entirely. Recorded in the runbook.
-- Still unconfirmed: nobody has yet granted the permission and re-run. Until
-  someone does, this is the best explanation of the evidence rather than a
-  proven cause.
+- Nothing to fix in this codebase; the failures now report the real OS error
+  instead of "could not reach the Streamplayer", which hid it.
+- **It matters for deployment.** The relay must run on a machine whose Dart
+  processes are allowed to reach the LAN. A Raspberry Pi or any unmanaged box
+  avoids the question entirely; a managed work laptop is the worst candidate,
+  which is worth knowing before RELAY-04 picks a host.
+- The spikes are blocked on this machine specifically, not in general.

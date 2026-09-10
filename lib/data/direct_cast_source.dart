@@ -19,6 +19,7 @@ class DirectCastSource with ReplayLatestSource implements NowPlayingSource {
     required CastAddressResolver resolveAddress,
     CastClient? client,
     this.mapper = const MediaStatusMapper(),
+    this.onDetail,
   }) : _client = client ?? CastClient(resolveAddress: resolveAddress) {
     _commands = CastCommands(_client);
     _control = _CastPlaybackControl(_commands);
@@ -26,6 +27,11 @@ class DirectCastSource with ReplayLatestSource implements NowPlayingSource {
 
   final CastClient _client;
   final MediaStatusMapper mapper;
+
+  /// Receives the raw connection error, for a caller that has somewhere to log
+  /// it. The UI gets the friendly reason; whoever runs the relay needs the
+  /// verbatim one.
+  final void Function(Object error)? onDetail;
   late final CastCommands _commands;
   late final _CastPlaybackControl _control;
   StreamSubscription<CastUpdate>? _subscription;
@@ -100,10 +106,11 @@ class DirectCastSource with ReplayLatestSource implements NowPlayingSource {
         _note('status: app=${snapshot.appDisplayName ?? 'none'} '
             'transport=${snapshot.transportId ?? '—'}');
         emit(mapper.map(snapshot));
-      case CastDisconnected(:final reason):
+      case CastDisconnected(:final reason, :final detail):
         _link = LinkState.disconnected;
         _lastError = reason;
-        _note('disconnected: $reason');
+        _note('disconnected: ${detail ?? reason}');
+        if (detail != null) onDetail?.call(detail);
         emit(Unreachable(reason: reason));
     }
   }
