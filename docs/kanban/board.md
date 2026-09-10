@@ -22,12 +22,14 @@ relay ([ADR-0005](../adr/0005-web-delivery-via-relay.md)).
 
 | Backlog | Ready | In Progress | Review | Done |
 |---|---|---|---|---|
-| SPIKE-01…05, POL-02, EPIC-8 | — | — | everything marked ✅ | — |
+| SPIKE-01…05, POL-02, EPIC-8 | — | — | — | everything marked ✅ |
 
-Nothing moves to Done until it has been seen working against the real Streamplayer.
-"Review" here means built, tested against the fake device, and awaiting hardware.
+Done means implemented, tested and merged — **not** proven on the speaker. Every closed
+card is tested against the fake CASTV2 device and a relay on localhost; none has met the
+real Streamplayer. The five SPIKE cards are what close that gap, and until they run,
+"working" is a claim about the test suite rather than about the hardware.
 
-Legend: ✅ built and tested · ◐ partially built · ○ not started
+Legend: ✅ built, tested and merged · ○ not started
 
 ---
 
