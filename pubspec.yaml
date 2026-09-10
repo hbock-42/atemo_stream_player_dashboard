@@ -38,6 +38,10 @@ dependencies:
   # The only cross-platform WebSocket that works on web as well as io.
   # dart:io's WebSocket does not exist in a browser (ADR-0005).
   web_socket_channel: ^3.0.1
+  # Config and the cached device address must survive a restart. This is the one
+  # storage package that works on web (localStorage) as well as native, so it
+  # replaces a conditional-import storage layer of our own (CORE-04/DISC-04).
+  shared_preferences: ^2.5.5
 
 
 dev_dependencies:

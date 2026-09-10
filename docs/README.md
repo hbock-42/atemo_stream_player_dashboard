@@ -31,7 +31,10 @@ who wants an icon. They can connect directly to the device or through the relay.
 
 - **Flutter, no `material.dart`, no `cupertino.dart`.** Root is `WidgetsApp`. All visual
   primitives are hand-built. [ADR-0003](adr/0003-no-material-cupertino.md).
-- **Minimal dependencies.** Actual set: `multicast_dns` and `web_socket_channel`. The
+- **Minimal dependencies.** Actual set: `multicast_dns`, `web_socket_channel` and
+  `shared_preferences` — the last one because config and the last-known device address must
+  survive a restart, and it is the only store that works on web (localStorage) as well as
+  native, saving us a conditional-import storage layer of our own. The
   CASTV2 protobuf is hand-written, so there is no protobuf runtime and no `protoc` in the
   build; the relay's HTTP and WebSocket server is `dart:io` alone. Anything else needs a
   written reason.

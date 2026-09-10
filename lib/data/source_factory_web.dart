@@ -7,9 +7,16 @@ library;
 
 import '../config/app_config.dart';
 import '../domain/now_playing_source.dart';
+import 'address_cache.dart';
 import 'relay_source.dart';
 
-NowPlayingSource createSource(AppConfig config) =>
+/// [addressCache] is accepted only to match the io factory's signature, which
+/// the conditional export requires. Nothing on web ever discovers a device
+/// address, so there is nothing to cache.
+NowPlayingSource createSource(
+  AppConfig config, {
+  AddressCache addressCache = const NoAddressCache(),
+}) =>
     RelaySource(url: config.relayUrl ?? defaultRelayUrl());
 
 String defaultRelayUrl() {

@@ -11,7 +11,6 @@ import 'dart:async';
 import 'package:multicast_dns/multicast_dns.dart';
 
 import '../cast/cast_address.dart';
-import '../cast/cast_channel.dart';
 import 'multicast_lock.dart';
 
 const String kCastService = '_googlecast._tcp.local';
