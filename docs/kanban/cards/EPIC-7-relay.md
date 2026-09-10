@@ -39,7 +39,11 @@ why that code carries no Flutter import.
 - [ ] A client connecting, disconnecting, or dying does not affect the device connection or
       other clients.
 - [ ] Tested with 20 simultaneous clients.
-- [ ] Advertises itself over mDNS so the app finds the relay without configuration.
+- [ ] ~~Advertises itself over mDNS so the app finds the relay without configuration.~~
+      **Descoped by [ADR-0007](../../adr/0007-web-only-client.md).** Its only consumer was
+      the native client, which no longer exists. Web clients derive the socket URL from the
+      page's own origin, and reaching `streamplayer.local` in a browser depends on the host
+      OS advertising its hostname, not on this app advertising a service.
 
 **Size:** M
 
