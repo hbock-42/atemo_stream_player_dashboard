@@ -72,6 +72,16 @@ office network, and the network boundary offers no protection against it.
    reaching `/ws` — check they are on the office Wi-Fi and not on guest.
 5. Restart: the relay is stateless. Nothing is lost by restarting it.
 
+## Deployment
+
+For running this unattended for weeks on a Mac mini or a Raspberry Pi/Linux
+box - service definitions, install steps, the compiled-vs-`dart run` call,
+the `.local` hostname question, log locations and rotation, and what to check
+when the office says the page is stuck - see
+[`deploy/RUNBOOK.md`](deploy/RUNBOOK.md). `deploy/build_and_deploy.sh`
+builds the web bundle, compiles the relay, and lays both out where the
+service definitions in `deploy/` expect them.
+
 ## Known limitation
 
 Discovery has not been verified against the real device or the office network

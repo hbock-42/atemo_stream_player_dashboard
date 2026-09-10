@@ -1,0 +1,38 @@
+[Unit]
+Description=Streamplayer relay (RELAY-04) - holds the CASTV2 connection, serves the web UI
+Documentation=https://github.com/ (see relay/README.md and relay/deploy/RUNBOOK.md in the repo)
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+# Dedicated, unprivileged user. Create it during install (see RUNBOOK.md) -
+# the relay never needs root and binds a port above 1024.
+User=streamplayer
+Group=streamplayer
+WorkingDirectory=/opt/streamplayer-relay
+
+ExecStart=/opt/streamplayer-relay/bin/relay --port 8080 --web /opt/streamplayer-relay/web
+
+# Survive reboot (via WantedBy below) and restart unattended if it ever dies,
+# with a backoff so a real fault doesn't spin the CPU.
+Restart=always
+RestartSec=5
+StartLimitIntervalSec=60
+StartLimitBurst=10
+
+# Structured logs, persistent across restarts. journald keeps them across
+# reboots on any distro with persistent journal storage enabled (Raspberry Pi
+# OS does by default; see the runbook to check/enable elsewhere). A copy also
+# goes to a file for anyone who prefers `tail -f` over `journalctl`.
+StandardOutput=append:/var/log/streamplayer-relay/relay.log
+StandardError=append:/var/log/streamplayer-relay/relay.err.log
+
+# Minimal hardening: the relay only needs the network and its own directory.
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ReadWritePaths=/var/log/streamplayer-relay
+
+[Install]
+WantedBy=multi-user.target

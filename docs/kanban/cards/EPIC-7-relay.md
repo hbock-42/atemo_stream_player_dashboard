@@ -73,11 +73,16 @@ The relay is now a single point of failure for everyone. This card is why that's
       [OQ-7](../../open-questions.md#oq-7--does-the-relay-host-have-a-stable-name-on-the-office-network):
       test `http://streamplayer.local:8080` from Android and iOS, and fall back to a static
       IP if mDNS resolution is unreliable.
-- [ ] A one-page runbook: install, start, stop, read logs, what to check when the office
-      says "the page is stuck".
-- [ ] Health endpoint reporting device connection state, client count, and uptime.
-- [ ] Structured logs survive restart, so a 3am failure is diagnosable in the morning.
-- [ ] The runbook states plainly that the relay must not be port-forwarded or tunnelled,
+- [x] A one-page runbook: install, start, stop, read logs, what to check when the office
+      says "the page is stuck". See `relay/deploy/RUNBOOK.md`.
+- [x] Health endpoint reporting device connection state, client count, and uptime. Already
+      existed at `/health`; the runbook gives a copy-pasteable `curl` and explains each field.
+- [x] Structured logs survive restart, so a 3am failure is diagnosable in the morning. Both
+      service definitions direct stdout/stderr to persistent files outside the process
+      (`relay/deploy/com.streamplayer.relay.plist`, `relay/deploy/streamplayer-relay.service`),
+      with rotation configs for each (`streamplayer-relay.newsyslog.conf`,
+      `streamplayer-relay.logrotate`).
+- [x] The runbook states plainly that the relay must not be port-forwarded or tunnelled,
       and why — layer 1 of [ADR-0006](../../adr/0006-lan-membership-is-the-auth-boundary.md).
 - [ ] Relay host chosen from [SPIKE-05]'s candidates; wired preferred.
 
