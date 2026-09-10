@@ -7,13 +7,22 @@ Reference: [protocol.md](../../protocol.md). Decision: [ADR-0001](../../adr/0001
 
 ---
 
-## CAST-01 — `CastMessage` protobuf
+## CAST-01 — `CastMessage` codec
+
+**Revised during implementation.** `protoc` was not available, and `CastMessage` is six
+fields of varint and length-delimited string — so the codec is hand-written and the
+`protobuf` runtime dependency was dropped entirely rather than vendoring generated code.
+[ADR-0001](../../adr/0001-hand-rolled-castv2.md) amended accordingly.
 
 **Acceptance**
-- [ ] `cast_channel.proto` vendored into the repo with its provenance noted.
-- [ ] `cast_message.pb.dart` generated and checked in; `protoc` is not part of the build.
-- [ ] A `tool/generate_proto.sh` documents how to regenerate.
-- [ ] Round-trip test: encode a message, decode it, fields match.
+- [x] `lib/cast/cast_message.dart` encodes and decodes the six fields we use, with the
+      `.proto` definition recorded in the file's doc comment for provenance.
+- [x] No `.proto` file, no codegen step and no `protobuf` dependency; `protoc` is not
+      required to build this project.
+- [x] Round-trip test: encode a message, decode it, fields match.
+- [x] Unknown fields are skipped rather than rejected, so a firmware update that adds one
+      does not break us.
+- [x] A truncated frame throws rather than returning half a message.
 
 **Size:** S
 

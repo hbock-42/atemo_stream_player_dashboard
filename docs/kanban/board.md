@@ -1,7 +1,11 @@
 # Kanban — Atonemo Streamplayer Viewer
 
-Cards live in [`cards/`](cards/), one file per epic. Move an ID between columns here as work
-progresses; keep acceptance criteria in the card file.
+Cards live in [`cards/`](cards/), one file per epic, and are mirrored as GitHub issues on
+the project board: **https://github.com/users/hbock-42/projects/2**
+
+The project board is the day-to-day view; these files hold the reasoning. One issue per
+card, labelled by epic and size, with an Epic field so the board can be grouped by epic.
+Close a card from a commit with `Closes #<n>`.
 
 **Status:** M1 core built. 103 tests pass, `flutter analyze` is clean, the web build
 compiles, and `tool/check_layers.sh` passes. Nothing has been run against the real device
@@ -74,7 +78,7 @@ EPIC-5 can run in parallel against `FakeSource` from day one.
 | ✅ | DISC-02 | Android multicast lock + permissions | 2 | M | DISC-01 |
 | ✅ | DISC-03 | iOS Info.plist local network entitlements | 2 | S | DISC-01 |
 | ◐ | DISC-04 | Cache last-known address, manual IP fallback | 2 | S | DISC-01 |
-| ✅ | CAST-01 | `CastMessage` protobuf, vendored and generated | 3 | S | CORE-01 |
+| ✅ | CAST-01 | `CastMessage` codec, hand-written | 3 | S | CORE-01 |
 | ✅ | CAST-02 | `CastChannel` — TLS + length-prefix framing | 3 | M | CAST-01 |
 | ✅ | CAST-03 | Handshake to receiver and media namespaces | 3 | M | CAST-02 |
 | ✅ | CAST-04 | Heartbeat PING/PONG and liveness timeout | 3 | S | CAST-03 |
