@@ -7,6 +7,7 @@
 library;
 
 import 'dart:async';
+import 'dart:io';
 
 import 'package:multicast_dns/multicast_dns.dart';
 
@@ -56,8 +57,30 @@ class MdnsDiscovery {
     }
   }
 
+  /// Binds the multicast socket, retrying without `reusePort`.
+  ///
+  /// `multicast_dns` asks for `reusePort: true`, which several platforms —
+  /// macOS among them — refuse. The package exists to be overridden here, and
+  /// the retry is the difference between discovery working on someone's laptop
+  /// and silently finding nothing.
+  static Future<RawDatagramSocket> _bind(
+    dynamic host,
+    int port, {
+    bool reuseAddress = true,
+    bool reusePort = false,
+    int ttl = 255,
+  }) async {
+    try {
+      return await RawDatagramSocket.bind(host, port,
+          reuseAddress: reuseAddress, reusePort: reusePort, ttl: ttl);
+    } on SocketException {
+      return RawDatagramSocket.bind(host, port,
+          reuseAddress: reuseAddress, reusePort: false, ttl: ttl);
+    }
+  }
+
   Future<CastAddress?> _browse() async {
-    final client = MDnsClient();
+    final client = MDnsClient(rawDatagramSocketFactory: _bind);
     await client.start();
     try {
       await for (final ptr in client.lookup<PtrResourceRecord>(
@@ -110,7 +133,7 @@ class MdnsDiscovery {
   /// fallback if a Connect protocol turns out to be silent on the media
   /// namespace. See OQ-1.
   Future<Map<String, String>> readTxtRecord({String? instance}) async {
-    final client = MDnsClient();
+    final client = MDnsClient(rawDatagramSocketFactory: _bind);
     await client.start();
     try {
       final name = instance ?? await _findInstance(client);

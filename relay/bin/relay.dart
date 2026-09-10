@@ -49,12 +49,31 @@ Future<void> _run(List<String> arguments) async {
   final discovery = MdnsDiscovery();
   CastAddress? cached;
 
+  var warned = false;
   final source = DirectCastSource(
     resolveAddress: ({bool forceRefresh = false}) async {
       final manual = options['host'];
       if (manual != null) return CastAddress(host: manual, friendlyName: 'Streamplayer');
       if (!forceRefresh && cached != null) return cached;
       cached = await discovery.findStreamplayer();
+
+      if (cached == null && !warned) {
+        warned = true;
+        // Retrying silently forever looks identical to a broken relay. Say
+        // what to try, once.
+        stderr
+          ..writeln('')
+          ..writeln('  Could not find the Streamplayer over mDNS.')
+          ..writeln('  Either it is powered off, or this network blocks multicast.')
+          ..writeln('  Find it by hand and skip discovery:')
+          ..writeln('      dns-sd -B _googlecast._tcp local')
+          ..writeln('      dart run bin/relay.dart --host <its-ip> --web ../build/web')
+          ..writeln('  Still retrying in the background.')
+          ..writeln('');
+      } else if (cached != null) {
+        warned = false;
+        stdout.writeln('  Found the Streamplayer at $cached');
+      }
       return cached;
     },
   );
@@ -112,7 +131,26 @@ Future<void> _serve(NowPlayingSource source, Map<String, String?> options) async
     exit(0);
   });
 
-  await server.start();
+  try {
+    await server.start();
+  } on SocketException catch (error) {
+    // A stack trace for "something else is already listening" tells the reader
+    // nothing they can act on.
+    if (error.osError?.errorCode == 48 || error.osError?.errorCode == 98) {
+      stderr
+        ..writeln('')
+        ..writeln('  Port ${server.port} is already in use.')
+        ..writeln('  Something else is listening — very likely another copy of')
+        ..writeln('  this relay. Find it, or pick another port:')
+        ..writeln('      lsof -nP -iTCP:${server.port} -sTCP:LISTEN')
+        ..writeln('      pkill -f bin/relay.dart')
+        ..writeln('      dart run bin/relay.dart --port 8081 --web ../build/web')
+        ..writeln('');
+      exit(1);
+    }
+    stderr.writeln('  Could not start the relay: $error');
+    exit(1);
+  }
 }
 
 Map<String, String?> _parse(List<String> arguments) {
