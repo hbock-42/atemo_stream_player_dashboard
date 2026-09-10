@@ -16,17 +16,30 @@ import '../widgets/app_button.dart';
 import '../widgets/app_icon.dart';
 import '../widgets/app_spinner.dart';
 import '../widgets/app_text.dart';
+import '../widgets/display_mode.dart';
 import '../widgets/volume_bar.dart';
+import '../widgets/wall_view.dart';
 
 class NowPlayingScreen extends StatelessWidget {
-  const NowPlayingScreen({super.key, required this.controller});
+  const NowPlayingScreen({super.key, required this.controller, this.mode});
 
   final NowPlayingController controller;
+
+  /// Normally read from the page URL — `?wall` puts this instance into
+  /// wall-display mode (POL-01, see `display_mode.dart`). Passed explicitly
+  /// only by tests.
+  final DisplayMode? mode;
 
   @override
   Widget build(BuildContext context) {
     final colors = AppTheme.of(context).colors;
     final padding = MediaQuery.paddingOf(context);
+
+    // Uri.base is the page URL on web; on native it is a file: path with no
+    // query, so the native build simply never selects wall mode this way.
+    if ((mode ?? displayModeFromUri(Uri.base)) == DisplayMode.wall) {
+      return WallView(controller: controller);
+    }
 
     return ColoredBox(
       color: colors.background,
@@ -127,6 +140,11 @@ class _FlickerGuardState extends State<_FlickerGuard> {
 class _Frame extends StatelessWidget {
   const _Frame({required this.children});
 
+  /// A phone-shaped column, centred, however wide the browser window is. Text
+  /// stretched across a 27" monitor is unreadable, and the artwork clamp above
+  /// already stops the image growing — without this the two disagree.
+  static const _maxContentWidth = 520.0;
+
   final List<Widget> children;
 
   @override
@@ -134,14 +152,21 @@ class _Frame extends StatelessWidget {
         child: ConstrainedBox(
           constraints: BoxConstraints(minHeight: MediaQuery.sizeOf(context).height - 1),
           child: Padding(
+            // Horizontal padding stays modest so a 360px phone — the narrowest
+            // we support — still has room for the controls row.
             padding: const EdgeInsets.symmetric(
               horizontal: AppSpacing.lg,
               vertical: AppSpacing.lg,
             ),
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: children,
+            child: Center(
+              child: ConstrainedBox(
+                constraints: const BoxConstraints(maxWidth: _maxContentWidth),
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: children,
+                ),
+              ),
             ),
           ),
         ),

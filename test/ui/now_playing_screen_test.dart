@@ -2,6 +2,8 @@ import 'package:atemo_stream_player_viewer/domain/now_playing.dart';
 import 'package:atemo_stream_player_viewer/state/now_playing_controller.dart';
 import 'package:atemo_stream_player_viewer/ui/screens/now_playing_screen.dart';
 import 'package:atemo_stream_player_viewer/ui/theme/app_theme.dart';
+import 'package:atemo_stream_player_viewer/ui/widgets/app_artwork.dart';
+import 'package:atemo_stream_player_viewer/ui/widgets/app_button.dart';
 import 'package:flutter/widgets.dart';
 import 'package:flutter_test/flutter_test.dart';
 
@@ -22,7 +24,7 @@ void main() {
   late NowPlayingController controller;
 
   Future<void> show(WidgetTester tester, NowPlaying state,
-      {bool controllable = true}) async {
+      {bool controllable = true, Size size = const Size(390, 844)}) async {
     source = ManualSource(controllable: controllable);
     controller = NowPlayingController(createSource: () => source);
     await controller.start();
@@ -35,7 +37,7 @@ void main() {
           child: Directionality(
             textDirection: TextDirection.ltr,
             child: MediaQuery(
-              data: const MediaQueryData(size: Size(390, 844)),
+              data: MediaQueryData(size: size),
               child: NowPlayingScreen(controller: controller),
             ),
           ),
@@ -118,5 +120,35 @@ void main() {
     }
 
     expect(find.textContaining('Looking for'), findsOneWidget);
+  });
+
+  /// WEB-03 — the browser window is whatever size the office happens to have.
+  testWidgets('lays out from a 360px phone up to a desktop window',
+      (tester) async {
+    for (final size in const [
+      Size(360, 640), // the narrowest phone we support
+      Size(390, 844),
+      Size(768, 1024), // tablet
+      Size(1440, 900), // desktop browser, maximised
+    ]) {
+      tester.view
+        ..physicalSize = size
+        ..devicePixelRatio = 1.0;
+      addTearDown(tester.view.reset);
+
+      await show(tester, fullTrack, size: size);
+
+      expect(tester.takeException(), isNull, reason: 'no overflow at $size');
+      expect(find.text('Waltz for Debby'), findsNWidgets(2));
+      // Every control stays inside the viewport rather than running off the
+      // edge at 360px or floating off-centre on a wide window.
+      for (final button in find.byType(AppIconButton).evaluate()) {
+        final rect = tester.getRect(find.byWidget(button.widget));
+        expect(rect.left, greaterThanOrEqualTo(0.0));
+        expect(rect.right, lessThanOrEqualTo(size.width));
+      }
+      final artwork = tester.getRect(find.byType(AppArtwork));
+      expect(artwork.width, lessThanOrEqualTo(size.width));
+    }
   });
 }

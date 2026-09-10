@@ -1,12 +1,14 @@
 {
-    "name": "atemo_stream_player_viewer",
-    "short_name": "atemo_stream_player_viewer",
+    "name": "Streamplayer",
+    "short_name": "Streamplayer",
+    "description": "See and control what's playing on the office Streamplayer.",
     "start_url": ".",
+    "scope": ".",
     "display": "standalone",
-    "background_color": "#0175C2",
-    "theme_color": "#0175C2",
-    "description": "A new Flutter project.",
-    "orientation": "portrait-primary",
+    "display_override": ["standalone", "minimal-ui"],
+    "background_color": "#0E0E11",
+    "theme_color": "#0E0E11",
+    "orientation": "any",
     "prefer_related_applications": false,
     "icons": [
         {

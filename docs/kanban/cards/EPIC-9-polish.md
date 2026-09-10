@@ -8,10 +8,29 @@
 **so that** nobody has to pull out a phone.
 
 **Acceptance**
-- [ ] A mode that keeps the screen awake and hides all chrome.
-- [ ] Large-format layout tuned for viewing across the room.
-- [ ] Optional dimming when `Idle`, so it isn't a nightlight.
-- [ ] Runs for days without a memory or handle leak.
+- [x] A mode that keeps the screen awake and hides all chrome. Screen Wake Lock on web,
+      feature-detected so an older tablet degrades to its own "screen timeout: never"
+      instead of failing. No native wakelock plugin is added — that would be a new
+      dependency for the non-primary target; recorded as a native follow-up in
+      `lib/platform/browser_stub.dart`. Chrome is not hidden so much as absent: the wall is
+      a separate widget with nothing tappable on it.
+- [x] Large-format layout tuned for viewing across the room. Type and artwork are sized from
+      the viewport rather than from the phone-tuned token scale, and the layout goes side by
+      side on a landscape tablet and stacked in portrait.
+- [x] Optional dimming when `Idle`, so it isn't a nightlight — dimmed to 28% rather than
+      blanked, because a black wall reads as "broken".
+- [x] Runs for days without a memory or handle leak: no timers at all, exactly one listener
+      (the browser bridge) cancelled on dispose, and artwork keyed on its URL so an
+      unchanged track never re-fetches. Covered by a test that drives 200 state changes
+      across a simulated 100 minutes and asserts no pending timers and one wake-lock
+      acquisition.
+
+**How the mode is entered:** by URL — `http://streamplayer.local:8080/?wall`. The relay
+already serves the page, so the flag rides along on the bookmark the tablet is set up with
+once; there is nothing to persist, no settings screen, and no gesture a passer-by can
+trigger by accident. `?wall=0` turns it off again. `Uri.base` is the page URL on web and a
+`file:` path on native, so the native build never sees the flag. See
+`lib/ui/widgets/display_mode.dart`.
 
 **Size:** S
 
