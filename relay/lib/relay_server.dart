@@ -77,15 +77,22 @@ class RelayServer {
         for (final address in interface.addresses) address.address,
     ];
 
+    // The machine already advertises <hostname>.local over Bonjour/avahi, so
+    // that is a memorable address with no extra machinery — and it survives
+    // the DHCP lease changing, which a bare IP does not.
+    final hostname = Platform.localHostname.replaceAll(RegExp(r'\.local\.?$'), '');
+
     stdout.writeln('');
     if (addresses.isEmpty) {
-      stdout.writeln('  No LAN address found — is this machine on the Wi-Fi?');
+      stdout.writeln('  No LAN address found — is this machine on Wi-Fi?');
     } else {
-      stdout.writeln('  Share this with the office:');
+      stdout.writeln('  Open this (the :$port matters):');
+      stdout.writeln('      http://$hostname.local:$port');
       for (final address in addresses) {
         stdout.writeln('      http://$address:$port');
       }
       stdout.writeln('  Wall display:  http://${addresses.first}:$port/?wall');
+      stdout.writeln('  Demo, no speaker needed:  http://${addresses.first}:$port/?demo');
     }
     stdout.writeln('  On this machine: http://localhost:$port');
     stdout.writeln('');
