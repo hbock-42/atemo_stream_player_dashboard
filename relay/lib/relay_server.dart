@@ -59,6 +59,36 @@ class RelayServer {
     _log(webRoot == null
         ? 'no web root configured; serving the WebSocket only'
         : 'serving the web UI from ${webRoot!.path}');
+    await _announceUrls(server.port);
+  }
+
+  /// Prints the addresses people should actually open.
+  ///
+  /// "Run the relay and give people the URL" is useless without knowing what
+  /// the URL is, and it is different on every network.
+  Future<void> _announceUrls(int port) async {
+    if (webRoot == null) return;
+    final interfaces = await NetworkInterface.list(
+      type: InternetAddressType.IPv4,
+      includeLoopback: false,
+    );
+    final addresses = [
+      for (final interface in interfaces)
+        for (final address in interface.addresses) address.address,
+    ];
+
+    stdout.writeln('');
+    if (addresses.isEmpty) {
+      stdout.writeln('  No LAN address found — is this machine on the Wi-Fi?');
+    } else {
+      stdout.writeln('  Share this with the office:');
+      for (final address in addresses) {
+        stdout.writeln('      http://$address:$port');
+      }
+      stdout.writeln('  Wall display:  http://${addresses.first}:$port/?wall');
+    }
+    stdout.writeln('  On this machine: http://localhost:$port');
+    stdout.writeln('');
   }
 
   void _onState(NowPlaying state) {
