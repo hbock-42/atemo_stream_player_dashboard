@@ -8,8 +8,12 @@ import 'dart:async';
 import 'dart:io';
 
 import 'package:atemo_stream_player_viewer/cast/cast_address.dart';
+import 'package:atemo_stream_player_viewer/cast/cast_channel.dart';
+import 'package:atemo_stream_player_viewer/cast/cast_client.dart';
 import 'package:atemo_stream_player_viewer/data/direct_cast_source.dart';
 import 'package:atemo_stream_player_viewer/discovery/mdns_discovery.dart';
+import 'package:atemo_stream_player_viewer/domain/now_playing_source.dart';
+import 'package:atemo_stream_player_viewer/testing/fake_cast_device.dart';
 import 'package:streamplayer_relay/relay_server.dart';
 
 Future<void> main(List<String> arguments) async {
@@ -34,6 +38,14 @@ Future<void> main(List<String> arguments) async {
 Future<void> _run(List<String> arguments) async {
   final options = _parse(arguments);
 
+  // --demo runs the whole stack against the in-memory fake device: real
+  // client, real mapper, real fan-out, no speaker. Useful for working on the
+  // UI, and for showing people what this will look like before it is deployed.
+  if (options.containsKey('demo')) {
+    await _serve(_demoSource(), options);
+    return;
+  }
+
   final discovery = MdnsDiscovery();
   CastAddress? cached;
 
@@ -47,6 +59,44 @@ Future<void> _run(List<String> arguments) async {
     },
   );
 
+  await _serve(source, options);
+}
+
+DirectCastSource _demoSource() {
+  final device = FakeCastDevice();
+
+  // Change the track periodically so the display is visibly alive.
+  const tracks = [
+    ('Waltz for Debby', 'Bill Evans Trio', 'Waltz for Debby', 'Spotify'),
+    ('Blue in Green', 'Miles Davis', 'Kind of Blue', 'Deezer'),
+    ('Everything In Its Right Place', 'Radiohead', 'Kid A', 'SoundCloud'),
+    ('Teardrop', 'Massive Attack', 'Mezzanine', 'Tidal'),
+  ];
+  var index = 0;
+  Timer.periodic(const Duration(seconds: 12), (_) {
+    index = (index + 1) % tracks.length;
+    final (title, artist, album, app) = tracks[index];
+    device
+      ..appDisplayName = app
+      ..mediaStatus = FakeCastDevice.defaultMediaStatus(
+          title: title, artist: artist, album: album)
+      ..pushReceiverStatus()
+      ..pushMediaStatus();
+  });
+
+  return DirectCastSource(
+    resolveAddress: ({bool forceRefresh = false}) async =>
+        const CastAddress(host: 'demo', friendlyName: 'Streamplayer (demo)'),
+    client: CastClient(
+      resolveAddress: ({bool forceRefresh = false}) async =>
+          const CastAddress(host: 'demo'),
+      channelFactory: (_) async => CastChannel.fromTransport(device),
+      heartbeatInterval: const Duration(seconds: 30),
+    ),
+  );
+}
+
+Future<void> _serve(NowPlayingSource source, Map<String, String?> options) async {
   final webPath = options['web'];
   final server = RelayServer(
     source: source,

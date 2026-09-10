@@ -48,6 +48,13 @@ class _DiagnosticsGateState extends State<DiagnosticsGate> {
     }
 
     return Stack(
+      // expand, not the default loose fit: a loose Stack hands its
+      // non-positioned child a minWidth of 0, so the whole app shrink-wraps to
+      // its widest element and gets pinned to the top-left corner. That is
+      // invisible on a layout whose widest element happens to fill the screen,
+      // and very visible on the wall display, which centres inside whatever
+      // width it is given.
+      fit: StackFit.expand,
       children: [
         widget.child,
         Positioned(
