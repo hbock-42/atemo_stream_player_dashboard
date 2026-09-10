@@ -9,6 +9,7 @@ import 'dart:async';
 import 'dart:io';
 import 'dart:typed_data';
 
+import 'cast_address.dart';
 import 'cast_message.dart';
 
 /// Opens a transport to the device. Injected so tests can substitute a plain
@@ -18,8 +19,6 @@ typedef CastSocketFactory = Future<Stream<Uint8List>> Function(
   int port,
   Duration timeout,
 );
-
-const int kDefaultCastPort = 8009;
 
 /// A framed CASTV2 connection.
 ///

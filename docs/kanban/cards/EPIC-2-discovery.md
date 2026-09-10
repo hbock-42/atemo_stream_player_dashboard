@@ -68,12 +68,25 @@ track like everyone else.
 Required or optional depending on [SPIKE-03].
 
 **Acceptance**
-- [ ] The last successful address is persisted and tried immediately on launch, in parallel
+- [x] The last successful address is persisted and tried immediately on launch, in parallel
       with a fresh discovery.
-- [ ] A direct connection attempt to the cached address succeeding means we skip waiting on
+- [x] A direct connection attempt to the cached address succeeding means we skip waiting on
       mDNS entirely — noticeably faster cold start.
-- [ ] After three consecutive connection failures the cache is discarded and discovery
+- [x] After three consecutive connection failures the cache is discarded and discovery
       re-run (DHCP moved the device).
-- [ ] The manual IP from [CORE-04] takes precedence over both.
+- [x] The manual IP from [CORE-04] takes precedence over both.
 
 **Size:** S
+
+**Revised during implementation.** `data/CachedAddressResolver` owns the race: it *starts*
+the browse, then returns the cached address without awaiting it, so a cache that is still
+right costs one preferences read instead of up to five seconds of mDNS. If it is wrong the
+connection fails, `CastClient` re-asks with `forceRefresh: true` on the third consecutive
+failure, and the resolver clears the cache and browses again.
+
+Two details worth knowing. An address is written to the cache when the CASTV2 handshake
+produces a snapshot — not when discovery finds it — because only a completed session proves
+the address answers. And the cache itself is behind an `AddressCache` interface: the
+implementation needs `shared_preferences` and therefore Flutter, while `data/` and
+`discovery/` must stay pure Dart for the relay, so the implementation sits in
+`lib/config/config_store.dart` and `mdns_discovery.dart` is untouched.

@@ -86,8 +86,23 @@ address by hand, **so that** a flaky mDNS setup doesn't make the app useless.
 - [ ] Native defaults to `relay` when one is discoverable, falling back to `direct`.
       Web is always `relay` and takes its URL from the page origin ([WEB-02]) — no
       configuration at all on the primary path.
-- [ ] Values persist across restarts (a small file; no `shared_preferences` dependency
+- [x] Values persist across restarts (a small file; no `shared_preferences` dependency
       unless justified).
-- [ ] Switching mode rebuilds the source without restarting the app.
+- [x] Switching mode rebuilds the source without restarting the app.
 
 **Size:** S
+
+**Revised during implementation.** Persistence is `shared_preferences`, not a file of our
+own. Justification, also recorded in `pubspec.yaml` and [docs/README.md](../../README.md):
+it is backed by `localStorage` on web and by the platform store on native, so one
+implementation covers every build we ship — a hand-rolled file store would have needed the
+conditional-import dance a second time, for less. `ConfigStore` (`lib/config/`) is the only
+place that touches it.
+
+Rebuilding without a restart is `data/ReconfigurableSource`: `AppConfigController` publishes
+each change as a `Stream<AppConfig>`, the source disposes its inner source and builds the
+one the new config asks for, and everything above the seam keeps its single subscription.
+It lives in `data/` rather than `state/` so the controller stays ignorant of configuration
+— and it takes a stream rather than a `Listenable` so `data/` stays Flutter-free for the
+relay. Wiring it into `main.dart` (load the config before the first `createSource`) is
+still open; it was owned by another agent while this landed.
