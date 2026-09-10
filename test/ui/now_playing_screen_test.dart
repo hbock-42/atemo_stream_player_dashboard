@@ -79,6 +79,18 @@ void main() {
     expect(find.text('40'), findsOneWidget);
   });
 
+  testWidgets('any casting app is shown, whichever it is', (tester) async {
+    // Nothing in the client may branch on the service. The office casts from
+    // Spotify, Tidal, Deezer and SoundCloud, and a receiver can report an app
+    // we have never heard of.
+    for (final app in ['Spotify', 'Tidal', 'Deezer', 'SoundCloud', 'Some New Thing']) {
+      await show(tester, Playing(title: 'A Track', castingApp: app));
+      expect(find.text(app.toUpperCase()), findsOneWidget,
+          reason: '$app should be attributed like any other');
+      // show() replaces `controller`; tearDown disposes the last one.
+    }
+  });
+
   testWidgets('a track with no metadata still renders', (tester) async {
     await show(tester, const Playing(castingApp: 'Tidal'));
 

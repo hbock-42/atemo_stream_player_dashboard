@@ -63,16 +63,30 @@ Read-only: it connects, watches, and prints the first occurrence of every
 message type with its payload. It never sends a command and never launches an
 app, so the session you are watching is undisturbed.
 
-While it runs, play from **Spotify Connect**, then **Tidal Connect**, then a
-**native Cast app**. For each, record:
+While it runs, play from **every service anyone here actually uses** — at least
+Spotify, Tidal, Deezer and SoundCloud, plus anything else people reach for. For
+each, record:
 
 - does an application appear in `RECEIVER_STATUS`, and with what `displayName`?
 - does `MEDIA_STATUS` arrive with real title/artist/album?
 - what `supportedMediaCommands` value is reported?
 
-Also worth watching: the mDNS TXT record carries `rs=` with a status line
-(`Casting: …`). Check whether it changes for Spotify and Tidal — it is a cheap
-fallback if the media namespace is silent.
+Expect two different outcomes. Deezer and SoundCloud cast over Google Cast
+proper, so they should launch a real receiver app and publish full metadata.
+Spotify Connect and Tidal Connect are separate protocols and may publish
+nothing at all. Confirm rather than assume — the two are indistinguishable from
+the outside.
+
+Also worth watching, in a second terminal:
+
+```bash
+dns-sd -L "Streamplayer-<hex>" _googlecast._tcp local
+```
+
+The TXT record carries `rs=` with a status line (`Casting: …`). If that tracks
+whatever is playing regardless of service, it is a service-agnostic fallback —
+worth far more than a per-service Web API, which would need separate OAuth for
+each of the four.
 
 Save the output. Those payloads become the fixtures in
 `test/support/fake_cast_device.dart`.
@@ -121,7 +135,9 @@ Record under **OQ-5**.
 1. Write the answers into [open-questions.md](open-questions.md).
 2. Tick the acceptance boxes in `docs/kanban/cards/EPIC-0-spikes.md` and close
    the SPIKE issues.
-3. If SPIKE-01 or SPIKE-04 came back badly for Spotify Connect, EPIC-8 becomes
-   real work. If they came back well, close it as not needed.
+3. If a service came back silent, EPIC-8 becomes real work — and its shape
+   depends on *how many*. One silent service is a Web API source; several is an
+   argument for the `rs=` route instead. If everything reported metadata, close
+   EPIC-8 as not needed.
 4. Anything that behaved differently from `docs/protocol.md` — fix the doc, and
    check whether `fake_cast_device.dart` should learn the same behaviour.

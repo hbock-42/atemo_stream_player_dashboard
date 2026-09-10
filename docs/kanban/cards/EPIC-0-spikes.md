@@ -6,21 +6,29 @@ top of it. Timebox the whole epic to one day. Spikes produce a written answer in
 
 ---
 
-## SPIKE-01 — Does Spotify Connect surface over the Cast media namespace?
+## SPIKE-01 — Which services surface over the Cast media namespace?
 
-**As** the developer, **I want** to know whether a Spotify Connect session is visible over
-CASTV2 on this device, **so that** I know whether EPIC-8 is required work or dead weight.
+**As** the developer, **I want** to know which of the services this office actually uses are
+visible over CASTV2 on this device, **so that** I know whether EPIC-8 is required work, dead
+weight, or the wrong shape.
+
+The office casts from **Spotify, Tidal, Deezer and SoundCloud**. Deezer and SoundCloud use
+Google Cast proper and should publish full metadata; Spotify Connect and Tidal Connect are
+separate protocols and may publish nothing. Test all of them — the difference is invisible
+from outside.
 
 Resolves [OQ-1](../../open-questions.md#oq-1--does-spotify-connect-surface-through-the-cast-media-namespace).
 
-**Approach:** extend the existing Python `pychromecast` PoC to dump every frame with
-namespace and payload. Play from Spotify Connect, then Tidal Connect, then a native Cast
-app. Record what each produces.
+**Approach:** `cd relay && dart run bin/spike.dart probe --host <ip> --seconds 180`, which
+dumps every frame with namespace and payload using the same client the relay ships. Play
+from each service in turn. See [docs/spikes.md](../../spikes.md).
 
 **Acceptance**
-- [ ] For each of Spotify Connect / Tidal Connect / native Cast, recorded: does
-      `RECEIVER_STATUS` show an application, what `displayName` and `appId`, and does
-      `MEDIA_STATUS` arrive with real metadata?
+- [ ] For **each service the office uses** — Spotify, Tidal, Deezer, SoundCloud, and any
+      other — recorded: does `RECEIVER_STATUS` show an application, what `displayName` and
+      `appId`, and does `MEDIA_STATUS` arrive with real metadata?
+- [ ] Recorded whether the mDNS TXT `rs=` status line tracks the track for every service.
+      If it does, it is a service-agnostic fallback and changes EPIC-8's shape entirely.
 - [ ] Sample payloads saved to `docs/samples/` — these become the [TEST-01] fixtures.
 - [ ] OQ-1 updated with the answer and a verdict on EPIC-8.
 
@@ -76,9 +84,9 @@ volume knob.
 
 Resolves [OQ-5](../../open-questions.md#oq-5--will-the-device-accept-commands-from-a-sender-that-did-not-launch-the-session).
 
-**Approach:** with a phone driving playback, connect a second sender from the Python PoC and
-issue each command in turn. Repeat for a native Cast app, Spotify Connect and Tidal Connect
-if [SPIKE-01] found them visible at all.
+**Approach:** `dart run bin/spike.dart commands --host <ip> --i-am-at-the-speaker`, with
+playback started from a different device. Repeat for each service [SPIKE-01] found visible —
+an app that reports metadata does not necessarily accept commands from a foreign sender.
 
 **Acceptance**
 - [ ] For each command — `SET_VOLUME` (receiver), `PAUSE`, `PLAY`, `QUEUE_NEXT`,

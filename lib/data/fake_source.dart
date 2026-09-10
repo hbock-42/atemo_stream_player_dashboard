@@ -61,6 +61,10 @@ class FakeSource with ReplayLatestSource implements NowPlayingSource {
 
   /// Covers the states worth eyeballing: a full card, a long title, absent
   /// artist and artwork, a partially-capable app, idle, and a failure.
+  ///
+  /// The apps are deliberately not all the same one. People here cast from
+  /// Spotify, Tidal, Deezer and SoundCloud, and nothing in the client may
+  /// branch on which.
   static List<NowPlaying> get defaultScript => [
         const Playing(
           title: 'Sixteen Going On Seventeen',
@@ -81,7 +85,7 @@ class FakeSource with ReplayLatestSource implements NowPlayingSource {
           title: 'Everything In Its Right Place (Remastered 2016 Anniversary Edition)',
           artist: null,
           album: 'Kid A',
-          castingApp: 'Tidal',
+          castingApp: 'SoundCloud',
           isPaused: true,
           volumeLevel: 0.4,
           capabilities: Capabilities(canPause: true),

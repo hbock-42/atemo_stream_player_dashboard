@@ -1,7 +1,18 @@
 # EPIC-8 — Spotify Web API source
 
-**Conditional epic.** Build only if [SPIKE-01] finds that Spotify Connect sessions do not
-surface through the Cast media namespace, or [SPIKE-04] finds that we cannot command them.
+**Conditional epic, and possibly the wrong shape.** Build only if [SPIKE-01] finds a service
+that does not surface through the Cast media namespace, or [SPIKE-04] finds one we cannot
+command.
+
+**Read the spike result before starting.** This epic covers *one* service. The office casts
+from Spotify, Tidal, Deezer and SoundCloud, and a per-service Web API source needs its own
+OAuth app, its own token storage and its own mapping for each. If several services turn out
+to be silent, four of these is the wrong answer and the service-agnostic mDNS `rs=` status
+line ([OQ-1](../../open-questions.md)) is worth pursuing first — it covers everything at
+once and costs no sender slot.
+
+Deezer and SoundCloud cast over Google Cast proper, so the likely finding is that they work
+and only the Connect protocols are in doubt. In that case this epic stays Spotify-shaped.
 
 The whole point of the [`NowPlayingSource`](../../architecture.md#the-seam) seam is that
 this epic touches no UI code.

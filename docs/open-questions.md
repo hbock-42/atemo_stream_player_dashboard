@@ -1,29 +1,50 @@
 # Known unknowns
 
-## OQ-1 — Does Spotify Connect surface through the Cast media namespace?
+## OQ-1 — Which of the services this office uses surface on the Cast media namespace?
 
-**Unknown.** Native Cast sessions certainly do. Spotify Connect on some receivers runs as a
-separate stack that does *not* publish to `urn:x-cast:com.google.cast.media`; on others it
-appears as a Cast app with full metadata. Tidal Connect has the same ambiguity.
+**Partly unknown, and the risk is narrower than it first looks.** People here cast from
+Spotify, Tidal, Deezer and SoundCloud. Those split into two groups, and only one is in doubt:
 
-**How the design absorbs it.** The UI depends on `NowPlayingSource`, not on Cast. If
-Spotify Connect turns out to be invisible over CASTV2, we add `SpotifyWebApiSource`
-(OAuth against `/v1/me/player/currently-playing` for the account driving the speaker) and
-compose it with the Cast source behind the same interface. Zero UI change.
+| Group | Services | Expectation |
+|---|---|---|
+| **Google Cast senders** — the app launches a real Cast receiver app, which gets a `transportId` and publishes `MEDIA_STATUS` | Deezer, SoundCloud, YouTube Music, anything casting from Chrome | Should work fully. This is the path the client is built for. |
+| **Proprietary "Connect" protocols** — a separate stack that is not Google Cast at all | Spotify Connect, Tidal Connect | May publish nothing on `urn:x-cast:com.google.cast.media`. This is the actual open question. |
 
-**How we resolve it.** Card [SPIKE-01] — play from Spotify on the device, dump every frame
-the client receives, and record the answer here. Do this early; it changes how much of
-Epic 7 is needed, and nothing else.
+So the likely outcome is that Deezer and SoundCloud simply work, and the doubt is confined
+to the two Connect protocols. Confirming that is worth more than assuming it: the two groups
+are indistinguishable from the outside, and "Spotify" appearing as a Cast app on one
+firmware and not another is exactly the kind of thing no vendor documents here.
+
+**How the design absorbs it.** The UI depends on `NowPlayingSource`, not on Cast, and
+nothing in `lib/` branches on which service is playing — the only `displayName` comparison
+in the whole client is the one that detects the idle Backdrop app. A service that reports
+metadata renders; one that does not, does not.
+
+The fallbacks differ in how well they scale:
+
+- **A Web API source per service** (EPIC-8, currently written for Spotify) covers exactly
+  one service and needs its own OAuth. Four services would mean four of them.
+- **The mDNS `rs=` field** is service-agnostic. The TXT record carries a status line for
+  whatever is playing, whoever launched it — see the network observation below. Coarse, but
+  it covers every service at once and costs no sender slot.
+
+If several services turn out to be invisible, the second is the better answer.
+
+**How we resolve it.** Card [SPIKE-01] — play from **each service the office actually uses**
+and dump every frame the client receives. Do this early; it decides whether EPIC-8 is real
+work, and which shape it should take.
 
 **Stakes raised by control.** With [ADR-0004](adr/0004-bidirectional-control.md) a bad
-answer here costs metadata *and* transport control for Spotify Connect sessions. Note the
+answer costs metadata *and* transport control for the affected service. Note the
 asymmetry: device volume goes through `receiver-0` and works regardless of the casting app,
 so the worst case degrades to a volume-only remote, not to nothing.
 
-**Fallback if both fail.** The device is also a Spotify Connect *endpoint*, so the Web API
-route will report the correct track and device name even when CASTV2 is silent — and the
-Web API also offers `PUT /v1/me/player/pause`, `/play`, `/next`, `/volume`, so control
-survives the fallback too, behind the same `PlaybackControl` interface.
+**Fallback if a Connect protocol is silent.** For Spotify specifically, the device is also a
+Spotify Connect endpoint, so the Web API reports the correct track and offers
+`PUT /v1/me/player/pause`, `/play`, `/next`, `/volume` — control survives behind the same
+`PlaybackControl` interface. Deezer and SoundCloud have APIs too, but each needs its own
+OAuth and its own mapping, which is why the service-agnostic `rs=` route is worth checking
+first.
 
 ## OQ-2 — How many concurrent CASTV2 senders does the device tolerate?
 
