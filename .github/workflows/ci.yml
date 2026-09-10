@@ -13,11 +13,15 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
       # Android SDK, for the debug APK build below.
       - uses: actions/setup-java@v4
         with:
+          # The APK build dominates this job (~4 of its 6 minutes on a cold
+          # runner), almost all of it Gradle resolving and compiling from
+          # scratch. Caching Gradle is the single biggest win available here.
+          cache: gradle
           distribution: "temurin"
           java-version: "17"
 
@@ -69,7 +73,7 @@ jobs:
     continue-on-error: true
     timeout-minutes: 15
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
       - uses: subosito/flutter-action@v2
         with:
