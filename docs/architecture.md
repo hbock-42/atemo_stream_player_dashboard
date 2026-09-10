@@ -87,6 +87,31 @@ are deliberately distinct — the user asked for visibly different states, and c
 is the most common bug in this class of app. Note that `Idle` still carries volume: the
 device volume control works with no app running.
 
+## Two ways to know what is playing
+
+`DirectCastSource` opens a CASTV2 connection and gets everything: title, artist,
+album, artwork, position, capabilities, and control.
+
+`TxtStatusSource` reads the device's mDNS TXT record and gets one string — the
+`rs=` status line, `Casting: <track>` — with no connection at all. It is how the
+office Android phones already display what is playing without any of them having
+started it.
+
+The trade is stark and worth stating, because it is not obvious which is better
+in every case:
+
+| | CASTV2 | mDNS TXT |
+|---|---|---|
+| Metadata | title, artist, album, artwork, position | one status string |
+| Control | yes, capability-gated | none — `control` is null |
+| Sender slots used | one | zero |
+| Concurrent-viewer limit | the device's, unknown (OQ-2) | none |
+| Services that publish nothing on the media namespace | invisible | still visible |
+
+The relay runs one or the other today (`--txt` selects the second). Composing
+them — CASTV2 when it has metadata, TXT as the floor — is the obvious next step
+and is deliberately not built until the spikes say which services need it.
+
 ## Diagnostics without leaking Cast
 
 The diagnostics screen needs protocol-level facts — the transport id, how long

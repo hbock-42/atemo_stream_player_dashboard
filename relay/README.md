@@ -30,6 +30,8 @@ Options:
 | `--port` | HTTP/WebSocket port (default 8080) |
 | `--web` | directory of `flutter build web` output; omit to serve the socket only |
 | `--host` | skip discovery and use this device IP, for networks that block multicast |
+| `--demo` | scripted data against an in-memory fake device; no speaker needed |
+| `--txt` | read the mDNS status line instead of connecting: view only, no artwork, but no sender slot used |
 
 Then open `http://<relay-host>:8080` from any phone on the office Wi-Fi.
 

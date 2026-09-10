@@ -2,6 +2,8 @@
 ///
 /// Usage:
 ///   dart run bin/relay.dart [--port 8080] [--web ../build/web] [--host 1.2.3.4]
+///   dart run bin/relay.dart --demo      scripted data, no speaker needed
+///   dart run bin/relay.dart --txt       read the mDNS status line, view only
 library;
 
 import 'dart:async';
@@ -11,6 +13,7 @@ import 'package:atemo_stream_player_viewer/cast/cast_address.dart';
 import 'package:atemo_stream_player_viewer/cast/cast_channel.dart';
 import 'package:atemo_stream_player_viewer/cast/cast_client.dart';
 import 'package:atemo_stream_player_viewer/data/direct_cast_source.dart';
+import 'package:atemo_stream_player_viewer/data/txt_status_source.dart';
 import 'package:atemo_stream_player_viewer/discovery/mdns_discovery.dart';
 import 'package:atemo_stream_player_viewer/domain/now_playing_source.dart';
 import 'package:atemo_stream_player_viewer/testing/fake_cast_device.dart';
@@ -43,6 +46,16 @@ Future<void> _run(List<String> arguments) async {
   // UI, and for showing people what this will look like before it is deployed.
   if (options.containsKey('demo')) {
     await _serve(await _demoSource(options), options);
+    return;
+  }
+
+  // --txt reads the device's mDNS TXT record instead of connecting to it.
+  // One status line, no artwork and no control — but no connection either, so
+  // no sender slot is consumed however many people are watching. It is how the
+  // office Android phones already show what is playing. See OQ-1.
+  if (options.containsKey('txt')) {
+    stdout.writeln('  Reading the mDNS status line — view only, no connection.');
+    await _serve(TxtStatusSource(), options);
     return;
   }
 
