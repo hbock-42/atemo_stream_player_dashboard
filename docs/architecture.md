@@ -34,6 +34,9 @@ else. Everything Cast-specific lives below `NowPlayingSource` and can be replace
         ┌────┴──────────────────────────────┐
         │  discovery/  mDNS + multicast lock│
         └───────────────────────────────────┘
+
+  config/     persisted settings + last known address (shared_preferences)
+  platform/   browser-only capabilities behind a conditional import
 ```
 
 ## The seam
@@ -41,7 +44,9 @@ else. Everything Cast-specific lives below `NowPlayingSource` and can be replace
 ```dart
 abstract interface class NowPlayingSource {
   Stream<NowPlaying> get stream;
-  PlaybackControl? get control;   // null when this source is read-only
+  NowPlaying get current;
+  PlaybackControl? get control;      // null when this source is read-only
+  SourceDiagnostics get diagnostics; // what this source can say about itself
   Future<void> start();
   Future<void> dispose();
 }
@@ -82,6 +87,21 @@ are deliberately distinct — the user asked for visibly different states, and c
 is the most common bug in this class of app. Note that `Idle` still carries volume: the
 device volume control works with no app running.
 
+## Diagnostics without leaking Cast
+
+The diagnostics screen needs protocol-level facts — the transport id, how long
+the device has been silent — but `ui/` may never import `cast/`. Those facts
+therefore travel as `SourceDiagnostics` on the domain seam: a mode, a link
+state, an endpoint, a last error, and a list of already-labelled
+`DiagnosticFact`s plus a bounded log.
+
+Sources fill in what they know. `DirectCastSource` reads its `CastClient`;
+`RelaySource` reports the relay URL and whether the relay granted it control;
+the mixin default derives a truthful link state from the domain state alone, so
+adding the getter cost every other implementation nothing. The UI prints
+label/value pairs it does not interpret, which is what keeps Cast vocabulary
+below the seam.
+
 ## Optimistic control
 
 A command's effect arrives as an unsolicited `MEDIA_STATUS` some hundreds of milliseconds
@@ -104,6 +124,8 @@ this is unusable.
 | `discovery/` | `_googlecast._tcp` browse, `Streamplayer-*` filter, Android multicast lock | Cache stale IPs silently |
 | `data/media_status_mapper.dart` | `MEDIA_STATUS` + `RECEIVER_STATUS` → `NowPlaying` | Throw on unexpected shapes |
 | `state/` | Lifecycle, retry policy, optimistic control, one value for the UI | Contain protocol knowledge |
+| `config/` | Persisted settings and the stored device address | Be reachable from `cast/` |
+| `platform/` | Browser capabilities behind a conditional import — visibility, online, wake lock | Exist on the native path |
 | `ui/` | Rendering, layout, theming, capability-gated controls | Know the word "Cast" |
 
 `cast/` and `domain/` are pure Dart with no Flutter dependency, so they run under plain
@@ -124,7 +146,8 @@ Streamplayer ──TLS:8009── [ relay ]  ──HTTP──> Flutter Web bundl
 ```
 
 - **Web clients** (the default way in): `RelaySource`. Zero configuration — the page derives
-  its socket URL from its own origin, since the relay served it.
+  its socket URL from its own origin, since the relay served it. `?wall` on that URL enters
+  the wall-display mode.
 - **Native clients**: either mode, chosen in `AppConfig`. Direct is useful for a wall display
   that must survive the relay being down, and for development.
 - The relay's wire format is `NowPlaying` serialised to JSON — the domain model, never raw
@@ -132,8 +155,10 @@ Streamplayer ──TLS:8009── [ relay ]  ──HTTP──> Flutter Web bundl
 
 ## Platform split
 
-`DirectCastSource` depends on `dart:io` and cannot exist in a web build. It sits behind a
-conditional import:
+`DirectCastSource` depends on `dart:io` and cannot exist in a web build. So does anything
+that reaches it transitively — `cast_address.dart` once imported `cast_channel.dart` for a
+single constant, which quietly dragged `dart:io` into everything holding an address. It sits
+behind a conditional import:
 
 ```dart
 // data/source_factory.dart
