@@ -144,6 +144,14 @@ Future<void> _doctor(String? host) async {
   final dnsSd = await _dnsSdFinds();
   print(_line('dns-sd browse (system)', dnsSd));
 
+  // Python is the discriminator. It is third-party like Dart, but it ships as
+  // a real app bundle, so it can appear in Privacy & Security > Local Network
+  // and be approved. Dart binaries are ad-hoc signed with no bundle, so they
+  // never appear there and can never be granted. If Python gets through and
+  // Dart does not, that asymmetry is the whole story.
+  final python = await _pythonConnect(target);
+  print(_line('TCP to :8009 (Python)', python));
+
   final mdns = await MdnsDiscovery(timeout: const Duration(seconds: 6))
           .findStreamplayer() !=
       null;
@@ -157,18 +165,32 @@ Future<void> _doctor(String? host) async {
     print('  The device is not reachable from this machine at all — not a code');
     print('  problem. Check it is powered on and on this network.');
   } else if ((nc || ping) && !dart) {
-    // The important verdict: Apple's tools get through and Dart does not.
-    print('  This machine lets Apple\'s own tools reach the device but blocks');
+    print('  This machine reaches the device with system tools and blocks');
     print('  Dart. That is the machine, not this code.');
     print('');
-    print('  Usual causes, in order:');
-    print('   - Endpoint security or a firewall on a managed/work laptop');
-    print('     (Little Snitch, LuLu, CrowdStrike, SentinelOne, Jamf).');
-    print('   - System Settings > Privacy & Security > Local Network: look for');
-    print('     an entry named dart or dartaotruntime, not just your terminal.');
+    if (python) {
+      // Python got through, so the network is fine and non-Apple binaries are
+      // not blocked as a class — it is specifically about being approvable.
+      print('  Python reached it and Dart did not. Python ships as an app');
+      print('  bundle, so it can appear in Privacy & Security > Local Network');
+      print('  and be approved. Dart binaries are ad-hoc signed with no bundle,');
+      print('  so they never appear there and cannot be granted.');
+      print('');
+      print('  There is no setting that fixes this for `dart run`.');
+    } else {
+      print('  Python could not reach it either, so it is not about one');
+      print('  runtime: this machine blocks non-Apple binaries from the local');
+      print('  network. Endpoint security on a managed laptop (Little Snitch,');
+      print('  LuLu, CrowdStrike, SentinelOne, Jamf) is the usual cause.');
+    }
     print('');
-    print('  Quickest way past it: run the relay somewhere else — a Raspberry');
-    print('  Pi, a personal laptop, any always-on box on the same network.');
+    print('  Run the relay somewhere else — a Raspberry Pi, a personal laptop,');
+    print('  any always-on box on the same network. That is where it belongs');
+    print('  anyway: a managed work laptop is a poor host for a service the');
+    print('  whole office depends on.');
+    print('');
+    print('  Meanwhile the UI still works without a speaker:');
+    print('      dart run bin/relay.dart --demo --web ../build/web');
   } else if (dnsSd && !mdns) {
     print('  TCP works but mDNS does not: discovery is blocked, the device is');
     print('  not. Use --host $target and skip discovery.');
@@ -204,6 +226,30 @@ Future<bool> _dartConnect(String host) async {
   } on Object {
     return false;
   }
+}
+
+/// Same connection, from a runtime that can hold a Local Network approval.
+Future<bool> _pythonConnect(String host) async {
+  const program = '''
+import socket, sys
+s = socket.socket(); s.settimeout(6)
+try:
+    s.connect((sys.argv[1], 8009)); print("ok")
+except Exception:
+    print("fail")
+finally:
+    s.close()
+''';
+  for (final executable in ['python3', 'python']) {
+    try {
+      final result = await Process.run(executable, ['-c', program, host])
+          .timeout(const Duration(seconds: 15));
+      if (result.exitCode == 0) return (result.stdout as String).contains('ok');
+    } on Object {
+      // Try the next name.
+    }
+  }
+  return false;
 }
 
 Future<bool> _dnsSdFinds() async {

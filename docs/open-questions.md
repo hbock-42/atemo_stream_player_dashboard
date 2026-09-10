@@ -153,7 +153,15 @@ Confirmed:
 - The device advertises *while casting*. Whether it keeps advertising when idle
   is still [OQ-3](#oq-3--does-the-devices-mdns-record-survive-standby).
 
-**Unanticipated, and relevant to [OQ-1](#oq-1--does-spotify-connect-surface-through-the-cast-media-namespace):**
+**Corroborated in the office:** several people report that their Android phones
+show what is playing on the speaker without any of them having started it. That
+is this TXT record. Android's Cast framework browses `_googlecast._tcp` and
+reads `rs=` — the receiver status text — with no connection to the device at
+all. Everyone's phone already does what this section describes, which is about
+as strong a demonstration as could be asked for that the field is live,
+broadcast to the whole LAN, and costs no sender slot.
+
+**Unanticipated, and relevant to [OQ-1](#oq-1--which-of-the-services-this-office-uses-surface-on-the-cast-media-namespace):**
 the TXT record carries `st=1` (an app is running) and `rs=` with a
 human-readable status line — here `Casting: Dor Fodida`. That is now-playing
 information available over plain mDNS, with no CASTV2 connection and no sender

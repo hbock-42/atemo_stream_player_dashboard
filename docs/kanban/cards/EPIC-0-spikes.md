@@ -29,6 +29,12 @@ from each service in turn. See [docs/spikes.md](../../spikes.md).
       `appId`, and does `MEDIA_STATUS` arrive with real metadata?
 - [ ] Recorded whether the mDNS TXT `rs=` status line tracks the track for every service.
       If it does, it is a service-agnostic fallback and changes EPIC-8's shape entirely.
+      **Raised in priority:** office Android phones already display what is playing
+      without having started it, which is this field being read straight off the LAN.
+      Run `dart run bin/spike.dart txt --seconds 600` while switching services; if `rs=`
+      follows every one, it is a data source that needs no CASTV2 connection, consumes no
+      sender slot (so [OQ-2] stops mattering), and works for services that publish nothing
+      on the media namespace.
 - [ ] Sample payloads saved to `docs/samples/` — these become the [TEST-01] fixtures.
 - [ ] OQ-1 updated with the answer and a verdict on EPIC-8.
 
