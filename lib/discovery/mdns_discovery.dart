@@ -13,6 +13,7 @@ import 'package:multicast_dns/multicast_dns.dart';
 
 import '../cast/cast_address.dart';
 import 'multicast_lock.dart';
+import 'system_mdns.dart';
 
 const String kCastService = '_googlecast._tcp.local';
 
@@ -23,12 +24,20 @@ class MdnsDiscovery {
   MdnsDiscovery({
     this.timeout = const Duration(seconds: 5),
     this.lock = const NoopMulticastLock(),
+    this.allowSystemFallback = true,
   });
 
   final Duration timeout;
 
   /// Android needs a real one; the relay and iOS do not.
   final MulticastLock lock;
+
+  /// Fall back to the OS's own mDNS tool when our sockets find nothing.
+  ///
+  /// On some machines every Dart socket to the LAN is refused while Apple's
+  /// `dns-sd` works — see OQ-9. Turned off in tests, which must not depend on
+  /// what happens to be on the network.
+  final bool allowSystemFallback;
 
   /// Returns the first Streamplayer found, or null if none appears before the
   /// timeout. Never hangs: a device that is off must produce a decision, not a
@@ -44,7 +53,14 @@ class MdnsDiscovery {
       (address) => address,
       onError: (Object _, StackTrace _) => null,
     );
-    return browse.timeout(timeout, onTimeout: () => null);
+    return browse
+        .timeout(timeout, onTimeout: () => null)
+        .then((address) => address ?? _systemFallback());
+  }
+
+  Future<CastAddress?> _systemFallback() async {
+    if (!allowSystemFallback || !SystemMdns.isSupported) return null;
+    return SystemMdns(timeout: timeout).findStreamplayer();
   }
 
   /// Releases the lock even when the browse throws or times out.
@@ -211,9 +227,16 @@ class MdnsDiscovery {
   /// fallback if a Connect protocol turns out to be silent on the media
   /// namespace. See OQ-1.
   Future<Map<String, String>> readTxtRecord({String? instance}) async {
+    final viaSockets = await _readTxtViaSockets(instance);
+    if (viaSockets.isNotEmpty) return viaSockets;
+    if (!allowSystemFallback || !SystemMdns.isSupported) return const {};
+    return SystemMdns(timeout: timeout).readTxtRecord();
+  }
+
+  Future<Map<String, String>> _readTxtViaSockets(String? instance) async {
     final client = MDnsClient(rawDatagramSocketFactory: _bind);
-    await client.start(interfacesFactory: usableInterfaces);
     try {
+      await client.start(interfacesFactory: usableInterfaces);
       final name = instance ?? await _findInstance(client);
       if (name == null) return const {};
       return await _txt(client, name);
