@@ -292,3 +292,20 @@ mDNS resolution from a real Android or iOS handset (OQ-7/SPIKE-05), actual
 behaviour of the office Wi-Fi (AP client isolation, guest SSID reachability -
 also SPIKE-05), a real week-long soak against the real Streamplayer, and
 which physical machine ends up hosting this (SPIKE-05's candidate list).
+
+### Reading `/health`
+
+```
+curl -s http://<relay-host>:8080/health | python3 -m json.tool
+```
+
+- `state` — what the relay believes is playing (or `unreachable` / `connecting`).
+- `clients` — how many browsers are currently connected.
+- `source.mode` — `direct` (a live CASTV2 connection) or `unknown` (the mDNS
+  status-line fallback).
+- `source.link` — `connected`, `connecting`, or `disconnected`.
+- `source.endpoint` — the device or relay address in use.
+- `source.lastError` — the last connection failure, verbatim. This is the field
+  that turns "it's stuck" into a cause: `No route to host` means this host
+  cannot reach the speaker (see OQ-9), a timeout means the speaker stopped
+  responding, and a null here with `state: playing` means all is well.

@@ -311,12 +311,23 @@ class RelayServer {
   }
 
   Future<void> _health(HttpRequest request) async {
+    // Enough to diagnose "the screen is stuck" over curl, without shelling into
+    // the host: what the relay believes is playing, how it is getting it, and
+    // the last thing that went wrong. See RUNBOOK.md.
+    final diag = source.diagnostics;
     request.response
       ..headers.contentType = ContentType.json
       ..write(jsonEncode({
         'state': _latest.toJson(),
         'clients': _clients.length,
         'uptimeSeconds': DateTime.now().difference(_startedAt).inSeconds,
+        'source': {
+          'mode': diag.mode.name,
+          'link': diag.link.name,
+          'endpoint': diag.endpoint,
+          'lastError': diag.lastError,
+          'facts': {for (final f in diag.facts) f.label: f.value},
+        },
       }));
     await request.response.close();
   }

@@ -57,6 +57,7 @@ const track = Playing(
 );
 
 void main() {
+  _healthDiagnosticsTests();
   _readOnlySourceTests();
   _artworkProxyTests();
   late StubSource source;
@@ -344,6 +345,33 @@ void _readOnlySourceTests() {
 
       expect(hello['type'], 'hello');
       expect(hello['canControl'], isFalse);
+    });
+  });
+}
+
+void _healthDiagnosticsTests() {
+  group('health diagnostics', () {
+    test('reports the active source and its link state, for 3am debugging',
+        () async {
+      final source = StubSource();
+      final server = RelayServer(source: source, port: 0);
+      await server.start();
+      addTearDown(server.stop);
+      source.push(const Playing(title: 'A Track'));
+      await Future<void>.delayed(const Duration(milliseconds: 30));
+
+      final client = HttpClient();
+      final response = await (await client
+              .getUrl(Uri.parse('http://127.0.0.1:${server.boundPort}/health')))
+          .close();
+      final body = jsonDecode(await response.transform(utf8.decoder).join())
+          as Map<String, dynamic>;
+      client.close();
+
+      expect(body['source'], isA<Map<String, dynamic>>());
+      final src = body['source'] as Map<String, dynamic>;
+      expect(src.keys, containsAll(['mode', 'link', 'endpoint', 'lastError']));
+      expect(src['link'], 'connected', reason: 'a Playing state means connected');
     });
   });
 }
