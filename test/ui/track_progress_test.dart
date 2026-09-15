@@ -4,6 +4,7 @@ import 'package:flutter/widgets.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
+  _seekTests();
   group('formatDuration', () {
     test('m:ss under an hour', () {
       expect(formatDuration(const Duration(seconds: 5)), '0:05');
@@ -87,5 +88,42 @@ void main() {
       expect(find.text('1:40'), findsNWidgets(2),
           reason: 'clamped to the duration, shown as both elapsed and total');
     });
+  });
+}
+
+void _seekTests() {
+  Widget wrapSeek(Widget child) => AppTheme(
+        child: Directionality(
+          textDirection: TextDirection.ltr,
+          child: Center(child: SizedBox(width: 300, child: child)),
+        ),
+      );
+
+  testWidgets('is not draggable when onSeek is null — a display, not a remote',
+      (tester) async {
+    await tester.pumpWidget(wrapSeek(const TrackProgress(
+      position: Duration(seconds: 10),
+      duration: Duration(seconds: 100),
+      isPaused: false,
+    )));
+    expect(find.byType(GestureDetector), findsNothing);
+  });
+
+  testWidgets('a tap seeks to the tapped position', (tester) async {
+    Duration? sought;
+    await tester.pumpWidget(wrapSeek(TrackProgress(
+      position: const Duration(seconds: 10),
+      duration: const Duration(seconds: 100),
+      isPaused: false,
+      onSeek: (d) => sought = d,
+    )));
+
+    // The bar is 300 wide, centred in a 300 box; tap near the middle.
+    await tester.tapAt(tester.getCenter(find.byType(GestureDetector)));
+    await tester.pump();
+
+    expect(sought, isNotNull);
+    // Middle of a 100s track is ~50s, allowing for the thumb geometry.
+    expect(sought!.inSeconds, closeTo(50, 6));
   });
 }

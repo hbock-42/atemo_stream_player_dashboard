@@ -156,6 +156,7 @@ class Playing extends NowPlaying {
     bool? isPaused,
     double? volumeLevel,
     bool? isMuted,
+    Duration? position,
   }) =>
       Playing(
         title: title,
@@ -164,7 +165,7 @@ class Playing extends NowPlaying {
         artworkUrl: artworkUrl,
         castingApp: castingApp,
         isPaused: isPaused ?? this.isPaused,
-        position: position,
+        position: position ?? this.position,
         duration: duration,
         volumeLevel: volumeLevel ?? this.volumeLevel,
         isMuted: isMuted ?? this.isMuted,

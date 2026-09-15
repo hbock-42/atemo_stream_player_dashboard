@@ -22,11 +22,17 @@ class TrackProgress extends StatefulWidget {
     required this.position,
     required this.duration,
     required this.isPaused,
+    this.onSeek,
   });
 
   final Duration position;
   final Duration duration;
   final bool isPaused;
+
+  /// When non-null the bar is draggable, and this is called with the target
+  /// position on release. Null makes it a read-only indicator — the app is a
+  /// display first, and not every source or app permits seeking.
+  final ValueChanged<Duration>? onSeek;
 
   @override
   State<TrackProgress> createState() => _TrackProgressState();
@@ -38,6 +44,9 @@ class _TrackProgressState extends State<TrackProgress> {
   Duration _base = Duration.zero;
   Duration _elapsed = Duration.zero;
   Timer? _ticker;
+
+  /// The fraction the finger is at while dragging, or null when not dragging.
+  double? _dragFraction;
 
   @override
   void initState() {
@@ -83,6 +92,67 @@ class _TrackProgressState extends State<TrackProgress> {
     return raw.isNegative ? Duration.zero : raw;
   }
 
+  Widget _bar(AppTheme theme, double fraction) {
+    final track = ClipRRect(
+      borderRadius: BorderRadius.circular(2),
+      child: Stack(
+        children: [
+          Container(height: 3, color: theme.colors.surfaceRaised),
+          FractionallySizedBox(
+            widthFactor: fraction,
+            child: Container(height: 3, color: theme.colors.accent),
+          ),
+        ],
+      ),
+    );
+
+    if (widget.onSeek == null) return track;
+
+    // A 3px line is unhittable, so give it a taller transparent hit area and a
+    // thumb, and drive seeking off the finger's x within the bar's width.
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final width = constraints.maxWidth;
+        void update(double dx) =>
+            setState(() => _dragFraction = (dx / width).clamp(0.0, 1.0));
+        void commit() {
+          final f = _dragFraction;
+          setState(() => _dragFraction = null);
+          if (f != null) widget.onSeek!(widget.duration * f);
+        }
+
+        return GestureDetector(
+          behavior: HitTestBehavior.opaque,
+          onTapDown: (d) => update(d.localPosition.dx),
+          onTapUp: (_) => commit(),
+          onHorizontalDragStart: (d) => update(d.localPosition.dx),
+          onHorizontalDragUpdate: (d) => update(d.localPosition.dx),
+          onHorizontalDragEnd: (_) => commit(),
+          child: SizedBox(
+            height: 24,
+            child: Stack(
+              alignment: Alignment.centerLeft,
+              children: [
+                track,
+                Align(
+                  alignment: Alignment(fraction * 2 - 1, 0),
+                  child: Container(
+                    width: 12,
+                    height: 12,
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      color: theme.colors.accent,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+
   @override
   void dispose() {
     _ticker?.cancel();
@@ -92,28 +162,21 @@ class _TrackProgressState extends State<TrackProgress> {
   @override
   Widget build(BuildContext context) {
     final theme = AppTheme.of(context);
-    final shown = _displayed;
-    final fraction = widget.duration.inMilliseconds == 0
-        ? 0.0
-        : (shown.inMilliseconds / widget.duration.inMilliseconds).clamp(0.0, 1.0);
+    final shown = _dragFraction != null
+        ? widget.duration * _dragFraction!
+        : _displayed;
+    final fraction = _dragFraction ??
+        (widget.duration.inMilliseconds == 0
+            ? 0.0
+            : (shown.inMilliseconds / widget.duration.inMilliseconds)
+                .clamp(0.0, 1.0));
 
     final label = theme.typography.caption.copyWith(color: theme.colors.textSecondary);
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        ClipRRect(
-          borderRadius: BorderRadius.circular(2),
-          child: Stack(
-            children: [
-              Container(height: 3, color: theme.colors.surfaceRaised),
-              FractionallySizedBox(
-                widthFactor: fraction,
-                child: Container(height: 3, color: theme.colors.accent),
-              ),
-            ],
-          ),
-        ),
+        _bar(theme, fraction),
         const SizedBox(height: AppSpacing.xs),
         Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,

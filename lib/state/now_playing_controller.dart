@@ -134,6 +134,14 @@ class NowPlayingController extends ChangeNotifier with WidgetsBindingObserver {
 
   void previous() => _command(() => _source?.control?.previous(), null);
 
+  void seek(Duration position) {
+    final state = _displayed;
+    _command(
+      () => _source?.control?.seek(position),
+      state is Playing ? state.copyWith(position: position) : null,
+    );
+  }
+
   void toggleMute() {
     final state = _displayed;
     final muted = switch (state) {

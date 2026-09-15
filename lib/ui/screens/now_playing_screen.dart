@@ -235,6 +235,10 @@ class _PlayingView extends StatelessWidget {
             position: state.position!,
             duration: state.duration!,
             isPaused: state.isPaused,
+            // Draggable only when we can control and the app permits seeking.
+            onSeek: canControl && state.capabilities.canSeek
+                ? controller.seek
+                : null,
           ),
         ],
         const SizedBox(height: AppSpacing.lg),

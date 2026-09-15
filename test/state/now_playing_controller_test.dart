@@ -44,6 +44,16 @@ void main() {
       expect(source.recorded.calls, ['pause']);
     });
 
+    test('seek shows the target immediately and calls the source', () async {
+      await build();
+      controller.seek(const Duration(seconds: 30));
+
+      expect((controller.value as Playing).position, const Duration(seconds: 30),
+          reason: 'the bar should jump to where the finger let go, not wait for '
+              'the device to confirm');
+      expect(source.recorded.calls, contains('seek'));
+    });
+
     test('reconciles when the device confirms', () async {
       await build();
       controller.pause();
