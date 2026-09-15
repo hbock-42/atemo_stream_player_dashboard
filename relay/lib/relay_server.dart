@@ -37,6 +37,12 @@ class RelayServer {
   final Set<_Client> _clients = <_Client>{};
   final DateTime _startedAt = DateTime.now();
 
+  /// Artwork URLs the relay has itself chosen to proxy. The /art endpoint
+  /// serves only these, so a client cannot turn it into an open proxy by
+  /// asking for an arbitrary URL. Small and self-limiting: a handful of
+  /// tracks' worth at a time.
+  final Set<String> _proxiedArtwork = <String>{};
+
   HttpServer? _server;
   StreamSubscription<NowPlaying>? _subscription;
   NowPlaying _latest = const Connecting();
@@ -120,23 +126,19 @@ class RelayServer {
     final url = json['artworkUrl'];
     if (url is! String || url.isEmpty) return json;
     final target = Uri.tryParse(url);
-    if (target == null || !_isProxyable(target)) return json;
+    if (target == null || (target.scheme != 'http' && target.scheme != 'https')) {
+      return json;
+    }
+    // Proxy every image, whatever its origin. CanvasKit needs CORS for any
+    // cross-origin image; a device serves art from its own address and never
+    // sends CORS, and a public CDN might or might not. Serving it all from
+    // here makes the question moot, and means a browser with no route to the
+    // device still gets the art.
+    _proxiedArtwork.add(url);
     return {
       ...json,
       'artworkUrl': '/art?u=${base64Url.encode(utf8.encode(url))}',
     };
-  }
-
-  /// Only private hosts, and only http(s).
-  ///
-  /// Without this the relay is an open proxy: anyone on the LAN could ask it
-  /// to fetch any URL on the internet and read the response through it.
-  static bool _isProxyable(Uri target) {
-    if (target.scheme != 'http' && target.scheme != 'https') return false;
-    final address = InternetAddress.tryParse(target.host);
-    if (address != null) return AccessPolicy.isPrivateAddress(address);
-    // A bare hostname could resolve anywhere; only .local is safely LAN-ish.
-    return target.host.toLowerCase().endsWith('.local');
   }
 
   Future<void> _serveArtwork(HttpRequest request) async {
@@ -150,8 +152,10 @@ class RelayServer {
       }
     }
 
-    if (target == null || !_isProxyable(target)) {
-      request.response.statusCode = HttpStatus.badRequest;
+    // Only URLs the relay itself advertised, so this cannot be used as an
+    // open proxy for arbitrary client-supplied URLs.
+    if (target == null || !_proxiedArtwork.contains(target.toString())) {
+      request.response.statusCode = HttpStatus.forbidden;
       await request.response.close();
       return;
     }

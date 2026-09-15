@@ -271,15 +271,16 @@ void _artworkProxyTests() {
       expect(state['artworkUrl'], startsWith('/art?u='));
     });
 
-    test('a public URL is left alone rather than proxied', () async {
-      // Proxying arbitrary URLs would make the relay an open proxy for anyone
-      // on the LAN.
+    test('a public URL is proxied too, since CanvasKit needs CORS either way',
+        () async {
+      // A CDN may or may not send CORS; serving it from the relay makes the
+      // question moot and works for every service.
       source.push(const Playing(
         title: 'A Track',
         artworkUrl: 'https://i.scdn.co/image/abc.jpg',
       ));
 
-      expect((await firstState())['artworkUrl'], 'https://i.scdn.co/image/abc.jpg');
+      expect((await firstState())['artworkUrl'], startsWith('/art?u='));
     });
 
     test('no artwork stays absent', () async {
@@ -287,7 +288,9 @@ void _artworkProxyTests() {
       expect((await firstState())['artworkUrl'], isNull);
     });
 
-    test('a public target is refused at the endpoint too', () async {
+    test('an un-advertised URL is refused, so this is not an open proxy', () async {
+      // A client asking for a URL the relay never chose to proxy must be
+      // turned away, or /art becomes a general-purpose fetcher.
       final url = base64Url.encode(utf8.encode('http://example.com/x.png'));
       final client = HttpClient();
       final response = await (await client
@@ -296,8 +299,7 @@ void _artworkProxyTests() {
       await response.drain<void>();
       client.close();
 
-      expect(response.statusCode, HttpStatus.badRequest,
-          reason: 'the relay must not fetch arbitrary internet URLs on request');
+      expect(response.statusCode, HttpStatus.forbidden);
     });
 
     test('a malformed parameter is refused', () async {
@@ -308,7 +310,9 @@ void _artworkProxyTests() {
       await response.drain<void>();
       client.close();
 
-      expect(response.statusCode, HttpStatus.badRequest);
+      // Undecodable, so certainly not in the allowlist — refused like any
+      // other URL the relay did not advertise.
+      expect(response.statusCode, HttpStatus.forbidden);
     });
   });
 }
