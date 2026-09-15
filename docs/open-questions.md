@@ -68,6 +68,18 @@ Some receivers stop advertising when idle. If so, a cached IP is the only way to
 distinguish `Idle` from `Unreachable` after a period of silence. Card [DISC-04] covers
 last-known-address caching; the answer determines whether it is required or merely nice.
 
+
+**Suggestive observation, 2026-09-15 (not yet a controlled result):** while the
+device was casting, `dns-sd -B _googlecast._tcp` found it consistently. Minutes
+later, after the set had ended and nothing was playing, the same browse found
+**zero** advertisements — not the device advertising with `st=0`, but no record
+at all. If that holds under a proper play → stop → wait test, it means the
+device stops advertising when idle, and discovery alone cannot tell "idle" from
+"gone". That makes DISC-04 (cache the last address and probe port 8009 directly)
+the way to keep `Idle` and `Unreachable` distinct, which is a stated design
+goal. Confirm deliberately before relying on it — a 6s browse can also just miss
+a slow responder.
+
 ## OQ-4 — Artwork URL reachability
 
 Artwork URLs in `MEDIA_STATUS` may be device-local (`http://<deviceIp>:8008/...`) rather
