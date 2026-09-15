@@ -17,6 +17,13 @@ repo_root="$(cd "$script_dir/../.." && pwd)"
 relay_dir="$repo_root/relay"
 dest="${1:-/opt/streamplayer-relay}"
 
+# Use sudo only where the destination is not already writable. /opt needs
+# it; a user directory like ~/streamplayer-relay does not, and demanding a
+# password there - or in CI - is pure friction.
+probe="$dest"
+while [ ! -e "$probe" ]; do probe="$(dirname "$probe")"; done
+if [ -w "$probe" ]; then SUDO=""; else SUDO="sudo"; fi
+
 echo "==> Building Flutter web bundle"
 (cd "$repo_root" && flutter build web)
 
@@ -31,19 +38,19 @@ tmp_bin="$(mktemp)"
 (cd "$relay_dir" && dart compile exe bin/relay.dart -o "$tmp_bin")
 
 echo "==> Installing into $dest (may prompt for sudo)"
-sudo mkdir -p "$dest/bin" "$dest/web" "$dest/logs"
-sudo install -m 755 "$tmp_bin" "$dest/bin/relay"
+$SUDO mkdir -p "$dest/bin" "$dest/web" "$dest/logs"
+$SUDO install -m 755 "$tmp_bin" "$dest/bin/relay"
 rm -f "$tmp_bin"
 
 # Replace the served web bundle atomically-ish: build fresh, then swap.
-sudo rm -rf "$dest/web.new"
-sudo cp -R "$repo_root/build/web" "$dest/web.new"
-sudo rm -rf "$dest/web.old"
+$SUDO rm -rf "$dest/web.new"
+$SUDO cp -R "$repo_root/build/web" "$dest/web.new"
+$SUDO rm -rf "$dest/web.old"
 if [ -d "$dest/web" ]; then
-  sudo mv "$dest/web" "$dest/web.old"
+  $SUDO mv "$dest/web" "$dest/web.old"
 fi
-sudo mv "$dest/web.new" "$dest/web"
-sudo rm -rf "$dest/web.old"
+$SUDO mv "$dest/web.new" "$dest/web"
+$SUDO rm -rf "$dest/web.old"
 
 echo "==> Done. Binary: $dest/bin/relay, web bundle: $dest/web"
 echo "    Restart the service so it picks up the new build:"
