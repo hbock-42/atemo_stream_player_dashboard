@@ -147,6 +147,12 @@ surfaces completely. Spotify Connect and Tidal Connect — the proprietary
 protocols — remain the open half of the question; test them by playing from
 each while running `dart run bin/spike.dart probe --host <ip>`.
 
+**Heartbeat stable over time (CAST-04):** the relay held a single CASTV2
+connection to the real device for a full minute — `playing` throughout, zero
+disconnects, zero errors. The PING/PONG handling keeps the session alive; the
+device only drops a sender that fails to heartbeat (as the raw probe did). So
+reconnect (CAST-06) is not exercised by normal operation, only by a real outage.
+
 **SPIKE-04, first data:** the device reports `supportedMediaCommands=274639`
 for SoundCloud, so it advertises a rich command set (that value includes pause,
 seek, queue-next/prev and more). Whether it *accepts* those commands from a

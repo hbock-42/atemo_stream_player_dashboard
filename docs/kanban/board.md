@@ -11,10 +11,13 @@ Close a card from a commit with `Closes #<n>`.
 `flutter analyze` is clean, the web build compiles, `tool/check_layers.sh` passes, and CI
 runs all of it.
 
-**First contact with hardware (2026-09-15):** `relay --txt` served the real speaker's track
-to a browser via the mDNS status line, with no connection to the device. The CASTV2 path is
-still unverified on hardware: the only machine tried so far refuses every Dart socket to the
-LAN (OQ-9), so the spikes that need a connection remain blocked on a different host.
+**Hardware-validated (2026-09-15):** the full path works against the real speaker. The
+CASTV2 client returns live title/artist/volume/capabilities; the relay serves the browser
+with real artwork proxied same-origin; the connection stayed up cleanly for a minute with
+no drops. A single missing `requestId` on the handshake `GET_STATUS` had made the client
+hang on hardware while every test passed — now fixed and regression-tested. Confirmed so
+far only with SoundCloud (a Google Cast app, full metadata); the proprietary Connect
+protocols and the multi-sender limit still need the remaining spikes.
 
 **Revised 2026-09-10** for two scope changes: playback control
 ([ADR-0004](../adr/0004-bidirectional-control.md)) and browser delivery via a mandatory
