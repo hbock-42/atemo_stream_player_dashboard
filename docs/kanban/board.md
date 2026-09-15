@@ -7,10 +7,14 @@ The project board is the day-to-day view; these files hold the reasoning. One is
 card, labelled by epic and size, with an Epic field so the board can be grouped by epic.
 Close a card from a commit with `Closes #<n>`.
 
-**Status:** M1 built, plus the non-hardware parts of M3. 163 tests pass (131 app, 32 relay),
+**Status:** M1 built, plus the non-hardware parts of M3. 217 tests pass (169 app, 48 relay),
 `flutter analyze` is clean, the web build compiles, `tool/check_layers.sh` passes, and CI
-runs all of it. Nothing has been run against the real device — every spike in EPIC-0 needs
-the hardware and the office network.
+runs all of it.
+
+**First contact with hardware (2026-09-15):** `relay --txt` served the real speaker's track
+to a browser via the mDNS status line, with no connection to the device. The CASTV2 path is
+still unverified on hardware: the only machine tried so far refuses every Dart socket to the
+LAN (OQ-9), so the spikes that need a connection remain blocked on a different host.
 
 **Revised 2026-09-10** for two scope changes: playback control
 ([ADR-0004](../adr/0004-bidirectional-control.md)) and browser delivery via a mandatory

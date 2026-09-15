@@ -227,7 +227,13 @@ class RelayServer {
     final socket = await WebSocketTransformer.upgrade(request);
     final client = _Client(
       socket: socket,
-      canControl: decision.canControl,
+      // Two different reasons a client cannot control, and both must say so:
+      // the access policy refused it, or the source behind the relay simply
+      // has no control to offer — the mDNS status line, for one. A client
+      // told it can control when it cannot renders disabled buttons and a
+      // volume slider pinned at zero, which reads as broken rather than as
+      // view-only.
+      canControl: decision.canControl && source.control != null,
       maxCommands: maxCommandsPerWindow,
       window: commandWindow,
     );

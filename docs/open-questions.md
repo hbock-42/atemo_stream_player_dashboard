@@ -161,6 +161,13 @@ all. Everyone's phone already does what this section describes, which is about
 as strong a demonstration as could be asked for that the field is live,
 broadcast to the whole LAN, and costs no sender slot.
 
+**Proven end to end, 2026-09-15.** `relay --txt` served the real speaker's
+current track — `Matières #1 - Présentée par Guessaï` on `The Kids 🕺` — to a
+browser, on the very machine where every Dart socket to the LAN is refused. The
+relay reads the record through `dns-sd` when its own sockets find nothing, and
+the browser renders it as view-only. This is the first time the whole stack has
+run against real hardware, and it did so with zero connections to the device.
+
 **Unanticipated, and relevant to [OQ-1](#oq-1--which-of-the-services-this-office-uses-surface-on-the-cast-media-namespace):**
 the TXT record carries `st=1` (an app is running) and `rs=` with a
 human-readable status line — here `Casting: Dor Fodida`. That is now-playing

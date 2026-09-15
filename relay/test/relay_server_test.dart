@@ -57,6 +57,7 @@ const track = Playing(
 );
 
 void main() {
+  _readOnlySourceTests();
   _artworkProxyTests();
   late StubSource source;
   late RelayServer server;
@@ -308,6 +309,37 @@ void _artworkProxyTests() {
       client.close();
 
       expect(response.statusCode, HttpStatus.badRequest);
+    });
+  });
+}
+
+class ReadOnlySource with ReplayLatestSource implements NowPlayingSource {
+  @override
+  PlaybackControl? get control => null;
+  @override
+  Future<void> start() async {}
+  void push(NowPlaying state) => emit(state);
+  @override
+  Future<void> dispose() async => closeController();
+}
+
+void _readOnlySourceTests() {
+  group('a source with no control', () {
+    test('tells clients so, even though the access policy would allow it', () async {
+      // The mDNS status-line source can only read. Telling a browser it may
+      // control anyway renders disabled buttons and a volume slider pinned at
+      // zero — which reads as broken, when the truth is simply view-only.
+      final source = ReadOnlySource();
+      final server = RelayServer(source: source, port: 0);
+      await server.start();
+      addTearDown(server.stop);
+
+      final socket = await WebSocket.connect('ws://127.0.0.1:${server.boundPort}/ws');
+      final hello = jsonDecode(await socket.first as String) as Map<String, dynamic>;
+      await socket.close();
+
+      expect(hello['type'], 'hello');
+      expect(hello['canControl'], isFalse);
     });
   });
 }
