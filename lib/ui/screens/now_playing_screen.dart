@@ -16,6 +16,7 @@ import '../widgets/app_button.dart';
 import '../widgets/app_icon.dart';
 import '../widgets/app_spinner.dart';
 import '../widgets/app_text.dart';
+import '../widgets/track_progress.dart';
 import '../widgets/display_mode.dart';
 import '../widgets/volume_bar.dart';
 import '../widgets/wall_view.dart';
@@ -226,6 +227,14 @@ class _PlayingView extends StatelessWidget {
             color: colors.textSecondary,
             maxLines: 1,
             align: TextAlign.center,
+          ),
+        ],
+        if (state.duration != null && state.position != null) ...[
+          const SizedBox(height: AppSpacing.lg),
+          TrackProgress(
+            position: state.position!,
+            duration: state.duration!,
+            isPaused: state.isPaused,
           ),
         ],
         const SizedBox(height: AppSpacing.lg),
