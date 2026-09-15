@@ -183,11 +183,12 @@ class CastClient {
 
     try {
       _connectTo(CastEndpoints.receiver);
-      _sendJson(
-        CastNamespaces.receiver,
-        CastEndpoints.receiver,
-        {'type': 'GET_STATUS'},
-      );
+      // requestId is not optional in practice: the real device silently
+      // ignores a GET_STATUS without one and never replies, where the fake
+      // device answers regardless — which is why every test passed while the
+      // hardware hung. See the comment on _sendRequest.
+      _sendRequest(CastNamespaces.receiver, CastEndpoints.receiver,
+          {'type': 'GET_STATUS'});
       _startHeartbeat();
       _resetLiveness();
       await done.future;
@@ -326,7 +327,7 @@ class CastClient {
     if (transportId != null && transportId != previousTransportId) {
       if (previousTransportId != null) _closeConnection(previousTransportId);
       _connectTo(transportId);
-      _sendJson(CastNamespaces.media, transportId, {'type': 'GET_STATUS'});
+      _sendRequest(CastNamespaces.media, transportId, {'type': 'GET_STATUS'});
     }
 
     _emit(CastSnapshotUpdate(_snapshot));
@@ -385,6 +386,15 @@ class CastClient {
   }
 
   int _nextRequestId() => _requestId++;
+
+  /// Sends a request, stamping it with a fresh requestId.
+  ///
+  /// The Streamplayer will not answer a GET_STATUS that carries no requestId —
+  /// it treats it as malformed and stays silent. Anything expecting a reply
+  /// must go through here rather than [_sendJson].
+  void _sendRequest(String namespace, String destination, Map<String, dynamic> payload) {
+    _sendJson(namespace, destination, {...payload, 'requestId': _nextRequestId()});
+  }
 
   void _sendJson(String namespace, String destination, Map<String, dynamic> payload) {
     final channel = _channel;

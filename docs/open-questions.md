@@ -130,6 +130,38 @@ highest-impact unknown remaining and the cheapest to check.
 **How we resolve it.** Card [SPIKE-05], early. If client isolation is on, we need a wired
 host or a network change before anything else is worth building.
 
+## CASTV2 confirmed against the real device, 2026-09-15
+
+The full client — discovery, handshake, media status — ran against the real
+Streamplayer and returned live metadata:
+
+```
+app=SoundCloud  title=14. Angelillo & Hamel - Je Veux te Dire une Chanson
+                artist=Super_Breaks  supportedMediaCommands=274639  volume=0.66
+```
+
+**SPIKE-01, partial answer:** SoundCloud casts as a real Google Cast app
+(`appId B143C57E`, `appType WEB`), publishes `urn:x-cast:com.google.cast.media`,
+and its `MEDIA_STATUS` carries full title and artist. So a Google-Cast sender
+surfaces completely. Spotify Connect and Tidal Connect — the proprietary
+protocols — remain the open half of the question; test them by playing from
+each while running `dart run bin/spike.dart probe --host <ip>`.
+
+**SPIKE-04, first data:** the device reports `supportedMediaCommands=274639`
+for SoundCloud, so it advertises a rich command set (that value includes pause,
+seek, queue-next/prev and more). Whether it *accepts* those commands from a
+sender that did not launch the session is still untested — that needs
+`dart run bin/spike.dart commands --host <ip> --i-am-at-the-speaker`, which
+changes real playback, so it waits until someone is at the speaker.
+
+**The bug this exposed:** the handshake `GET_STATUS` carried no `requestId`.
+The real device treats that as malformed and never replies, so the client hung
+forever at a stage every test passed — because the fake device answered
+regardless. Fixed, with a regression test whose fake device refuses a
+requestId-less GET_STATUS the way the hardware does. This is the first thing to
+check whenever "works in tests, hangs on hardware" recurs: the fake must be as
+strict as the device, or the tests are theatre.
+
 ## Observed on the network, 2026-09-10
 
 Gathered with `dns-sd` from a machine on the same LAN as a real Streamplayer.

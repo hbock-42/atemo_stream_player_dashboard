@@ -3,7 +3,8 @@
 /// Usage:
 ///   dart run bin/relay.dart [--port 8080] [--web ../build/web] [--host 1.2.3.4]
 ///   dart run bin/relay.dart --demo      scripted data, no speaker needed
-///   dart run bin/relay.dart --txt       read the mDNS status line, view only
+///   dart run bin/relay.dart --txt       read the mDNS status line only, view only
+///   dart run bin/relay.dart --no-floor  the live connection only, no fallback
 library;
 
 import 'dart:async';
@@ -12,6 +13,7 @@ import 'dart:io';
 import 'package:atemo_stream_player_viewer/cast/cast_address.dart';
 import 'package:atemo_stream_player_viewer/cast/cast_channel.dart';
 import 'package:atemo_stream_player_viewer/cast/cast_client.dart';
+import 'package:atemo_stream_player_viewer/data/composite_source.dart';
 import 'package:atemo_stream_player_viewer/data/direct_cast_source.dart';
 import 'package:atemo_stream_player_viewer/data/txt_status_source.dart';
 import 'package:atemo_stream_player_viewer/discovery/mdns_discovery.dart';
@@ -95,7 +97,19 @@ Future<void> _run(List<String> arguments) async {
     },
   );
 
-  await _serve(source, options);
+  // Default: the live connection leads, the mDNS status line is the floor.
+  // The floor is not even polled while the connection is up; when it drops —
+  // device refusing senders, this host unable to open a socket, a reconnect
+  // in progress — the display degrades to the status line instead of going
+  // blank. --no-floor keeps the connection alone, for diagnosing it.
+  if (options.containsKey('no-floor')) {
+    await _serve(source, options);
+    return;
+  }
+  await _serve(
+    CompositeSource(primary: source, buildFloor: TxtStatusSource.new),
+    options,
+  );
 }
 
 Future<DirectCastSource> _demoSource(Map<String, String?> options) async {

@@ -179,6 +179,20 @@ void main() {
     );
   });
 
+  test('handshake GET_STATUS carries a requestId, or the real device stays silent',
+      () async {
+    // The Streamplayer ignores a GET_STATUS with no requestId and never
+    // replies. Every test passed for weeks because the fake device answered
+    // regardless; the hardware hung. This fake refuses, like the real one.
+    client = buildClient(withDevice: FakeCastDevice(requireRequestId: true));
+    await client.start();
+    await settle();
+
+    expect(client.snapshot.appDisplayName, 'Spotify',
+        reason: 'a requestId-less GET_STATUS would get no answer, leaving this '
+            'null — which is exactly what the hardware did');
+  });
+
   test('never emits a media command without a mediaSessionId', () async {
     client = buildClient();
     await client.start();

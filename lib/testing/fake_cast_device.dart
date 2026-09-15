@@ -72,6 +72,7 @@ class FakeCastDevice extends Stream<Uint8List> implements CastTransport {
     this.respondToReceiverStatus = true,
     this.respondToMediaStatus = true,
     this.answerPings = true,
+    this.requireRequestId = false,
     this.rejectCommands = false,
   }) : mediaStatus = mediaStatus ?? defaultMediaStatus();
 
@@ -88,6 +89,10 @@ class FakeCastDevice extends Stream<Uint8List> implements CastTransport {
   bool respondToReceiverStatus;
   bool respondToMediaStatus;
   bool answerPings;
+
+  /// The real device ignores a GET_STATUS with no requestId. Off by default so
+  /// existing tests are unaffected; on to reproduce the hardware's behaviour.
+  bool requireRequestId;
 
   /// When true, media commands are accepted on the wire but produce no status
   /// change — the "silently ignored" case from SPIKE-04.
@@ -148,6 +153,7 @@ class FakeCastDevice extends Stream<Uint8List> implements CastTransport {
         }
       case CastNamespaces.receiver:
         if (message.type == 'GET_STATUS' && respondToReceiverStatus) {
+          if (requireRequestId && message.json['requestId'] == null) return;
           pushReceiverStatus();
         }
         if (message.type == 'SET_VOLUME' && !rejectCommands) {
@@ -160,6 +166,7 @@ class FakeCastDevice extends Stream<Uint8List> implements CastTransport {
         }
       case CastNamespaces.media:
         if (message.type == 'GET_STATUS' && respondToMediaStatus) {
+          if (requireRequestId && message.json['requestId'] == null) return;
           pushMediaStatus();
         }
         if (rejectCommands) return;
