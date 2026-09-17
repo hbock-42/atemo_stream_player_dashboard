@@ -1,6 +1,28 @@
 # Known unknowns
 
-## OQ-1 — Which of the services this office uses surface on the Cast media namespace?
+## OQ-1 — Which of the services this office uses surface on the Cast media namespace?  **— RESOLVED 2026-09-17**
+
+**Answer: it splits exactly along the protocol line, and it matters.**
+
+- **SoundCloud** (and, by the same mechanism, Deezer and other Google Cast
+  senders): fully visible. Casts as a real Cast app with a `transportId`,
+  publishes `MEDIA_STATUS` with title/artist, and advertises a rich
+  `supportedMediaCommands`. Verified live.
+- **Spotify Connect: completely invisible.** With Spotify actively playing
+  and its volume controllable from the app, the device reported `hasApp=false`
+  over CASTV2 and `st=0` with an empty `rs=` over mDNS. Both of our data
+  paths — the Cast media namespace and the mDNS status line — see nothing.
+  Verified live 2026-09-17.
+- **Tidal Connect: untested, but the same proprietary-Connect design as
+  Spotify**, so expect the same.
+
+**Consequence: EPIC-8 (Spotify Web API) is required, not optional.** The
+earlier bet that the CASTV2 + mDNS composite would cover everything was
+wrong: it covers Google Cast senders and is blind to the Connect protocols.
+Since the office plays from Spotify, Spotify now needs the Web API path, and
+the composite gains a third source below the floor:
+CASTV2 (rich) → Spotify Web API (Spotify only) → mDNS status line.
+
 
 **Partly unknown, and the risk is narrower than it first looks.** People here cast from
 Spotify, Tidal, Deezer and SoundCloud. Those split into two groups, and only one is in doubt:

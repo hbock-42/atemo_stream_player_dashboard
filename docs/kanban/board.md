@@ -53,7 +53,7 @@ Legend: ✅ built, tested and merged · ◐ partially built · ○ not started �
 | [EPIC-6](cards/EPIC-6-testing.md) | Testing & tooling | Fake device, layer purity, CI incl. web build | M1 |
 | [EPIC-7](cards/EPIC-7-relay.md) | Relay | One connection, N clients, serves the web UI | **M1 — now mandatory** |
 | [EPIC-10](cards/EPIC-10-web.md) | Web target | Flutter Web build, zero-config, browser gotchas | **M1 — the primary way in** |
-| [EPIC-8](cards/EPIC-8-spotify.md) | Spotify Web API source | Fallback if OQ-1 / OQ-5 say Cast can't do it | M2 (conditional) |
+| [EPIC-8](cards/EPIC-8-spotify.md) | Spotify Web API source | **Required** — SPIKE-01 proved Spotify Connect is invisible to Cast | M2 |
 | [EPIC-9](cards/EPIC-9-polish.md) | Polish & release | Distribution, wall display, diagnostics | M3 |
 
 ## Milestones
@@ -63,7 +63,7 @@ Legend: ✅ built, tested and merged · ◐ partially built · ○ not started �
   isolate clients, the architecture needs revisiting before anything is built.
 - **M1 — Office-ready.** Someone opens `http://streamplayer.local:8080` on their phone,
   sees the live track, and adjusts the volume. EPIC-1 … EPIC-7, EPIC-10.
-- **M2 — Gap-filling.** EPIC-8 if the spikes require it. Control authorisation is settled
+- **M2 — Spotify.** EPIC-8 is now required: SPIKE-01 proved Spotify Connect is invisible to both the Cast media namespace and the mDNS status line, so Spotify needs the Web API. Control authorisation is settled
   — [ADR-0006](../adr/0006-lan-membership-is-the-auth-boundary.md), no PIN — and ships as
   part of [RELAY-05] in M1.
 - **M3 — Shipped.** Wall display up, native builds distributed, diagnostics in place.
@@ -139,7 +139,7 @@ Sizes: S ≈ half a day, M ≈ 1–2 days, L ≈ 3+.
 | Gap | Why |
 |---|---|
 | Every spike (EPIC-0) | Needs the physical device and the office network. Yours to run; SPIKE-05 first, since AP client isolation would break the approach outright. |
-| EPIC-8 (Spotify Web API) | Conditional by design. Whether it is needed at all depends on SPIKE-01 and SPIKE-04; building it now would be guesswork. |
+| EPIC-8 (Spotify Web API) | **Now required** (SPIKE-01): Spotify Connect is invisible to Cast. Needs a Spotify developer app (client id/secret) and a one-time account authorisation — those are the only parts that need the user; the source, OAuth flow and composition can be built and tested against a fake API first. |
 | POL-02, DISC-02, DISC-03 | Descoped by [ADR-0007](../adr/0007-web-only-client.md). The Android and iOS targets were built and then removed: the browser was always the way in, and the native platforms cost an iOS distribution story, a keystore to keep for years, and a macOS CI job for something nobody would use. |
 | RELAY-02's mDNS advertisement | Closed with that box unticked. The web path never needed it (the page derives its socket URL from its own origin), but native has nothing to discover, which is what blocks POL-02's last criterion. A pure-Dart mDNS *responder* is real work — `multicast_dns` is a client only. |
 | Verification on hardware | 47 cards are in Review, not Done. Everything is tested against the fake CASTV2 device and a local relay; nothing has met the real Streamplayer. |
