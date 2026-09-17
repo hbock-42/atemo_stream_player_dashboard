@@ -125,9 +125,9 @@ EPIC-5 can run in parallel against `FakeSource` from day one.
 | ✅ | WEB-02 | Zero-config relay URL from page origin | 10 | S | WEB-01 |
 | ✅ | WEB-03 | Browser gotchas: autoplay-free, wake lock, mobile Safari | 10 | M | WEB-01 |
 | ✅ | WEB-04 | Add-to-home-screen manifest | 10 | S | WEB-01 |
-| ○ | SPOT-01 | Spotify OAuth for the speaker's account | 8 | M | SPIKE-01 |
-| ○ | SPOT-02 | `SpotifyWebApiSource` incl. control endpoints | 8 | M | SPOT-01, DOM-02 |
-| ○ | SPOT-03 | Compose Cast + Spotify sources | 8 | M | SPOT-02 |
+| ◐ | SPOT-01 | Spotify OAuth for the speaker's account | 8 | M | SPIKE-01 |
+| ◐ | SPOT-02 | `SpotifyWebApiSource` incl. control endpoints | 8 | M | SPOT-01, DOM-02 |
+| ◐ | SPOT-03 | Compose Cast + Spotify sources | 8 | M | SPOT-02 |
 | ✅ | POL-01 | Keep-awake / kiosk mode for a wall display | 9 | S | UI-01 |
 | ⊘ | POL-02 | Native builds for people who want an icon | 9 | S | TEST-04 |
 | ✅ | POL-03 | Diagnostics screen | 9 | S | STATE-01 |
