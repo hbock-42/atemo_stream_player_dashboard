@@ -17,6 +17,7 @@ const poor = Playing(title: 'Waltz for Debby', capabilities: Capabilities.none);
 Future<void> settle() => Future<void>.delayed(Duration.zero);
 
 void main() {
+  _idleFallbackTests();
   late ManualSource primary;
   late List<ManualSource> floors;
   late CompositeSource composite;
@@ -135,5 +136,58 @@ void main() {
 
     final showing = composite.diagnostics.facts.firstWhere((f) => f.label == 'showing');
     expect(showing.value, 'mDNS status line');
+  });
+}
+
+void _idleFallbackTests() {
+  Future<void> settle() => Future<void>.delayed(Duration.zero);
+
+  group('fallbackOnIdle — the Spotify layer', () {
+    late ManualSource primary;
+    late List<ManualSource> floors;
+    late CompositeSource composite;
+
+    setUp(() async {
+      primary = ManualSource();
+      floors = [];
+      composite = CompositeSource(
+        primary: primary,
+        fallbackOnIdle: true,
+        buildFloor: () {
+          final f = ManualSource();
+          floors.add(f);
+          return f;
+        },
+      );
+      await composite.start();
+    });
+
+    tearDown(() => composite.dispose());
+
+    test('primary Idle consults the floor, since Cast is blind to Spotify', () async {
+      // Cast reports Idle while Spotify plays; the floor must be asked.
+      primary.push(const Idle(deviceName: 'Streamplayer'));
+      await settle();
+      expect(floors, hasLength(1));
+
+      floors.single.push(const Playing(title: 'A Spotify Track', castingApp: 'Spotify'));
+      await settle();
+      expect((composite.current as Playing).title, 'A Spotify Track');
+    });
+
+    test('primary Playing still wins over the floor', () async {
+      primary.push(const Playing(title: 'SoundCloud Track', castingApp: 'SoundCloud'));
+      await settle();
+      expect((composite.current as Playing).title, 'SoundCloud Track');
+      expect(floors, isEmpty, reason: 'no need to poll Spotify while Cast is playing');
+    });
+
+    test('both idle shows idle', () async {
+      primary.push(const Idle());
+      await settle();
+      floors.single.push(const Idle(deviceName: 'Spotify'));
+      await settle();
+      expect(composite.current, isA<Idle>());
+    });
   });
 }

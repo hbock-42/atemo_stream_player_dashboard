@@ -26,9 +26,21 @@ import '../domain/now_playing_source.dart';
 import 'source_base.dart';
 
 class CompositeSource with ReplayLatestSource implements NowPlayingSource {
-  CompositeSource({required this.primary, required this.buildFloor});
+  CompositeSource({
+    required this.primary,
+    required this.buildFloor,
+    this.fallbackOnIdle = false,
+  });
 
   final NowPlayingSource primary;
+
+  /// When true, the primary reporting [Idle] also hands over to the floor — not
+  /// just [Unreachable]. This is how a Spotify layer sits below CASTV2: the
+  /// Cast connection reports Idle whenever a Connect protocol is playing
+  /// (Spotify is invisible to it, OQ-1), and that Idle must be treated as "ask
+  /// the next source", not "nothing is playing". Default false keeps the
+  /// plain primary-plus-floor behaviour where Idle is authoritative.
+  final bool fallbackOnIdle;
 
   /// A fresh floor each time it is needed. A source that owns a timer and a
   /// subprocess is disposed when the primary recovers, and a disposed source
@@ -70,14 +82,25 @@ class CompositeSource with ReplayLatestSource implements NowPlayingSource {
   void _onPrimary(NowPlaying state) {
     if (_disposed) return;
     switch (state) {
-      case Playing() || Idle():
+      case Playing():
         _primaryLeads = true;
         unawaited(_stopFloor());
         emit(state);
+      case Idle():
+        if (fallbackOnIdle) {
+          // Cast sees nothing, but a lower source (Spotify) might. Consult it,
+          // and let it decide between Playing and Idle.
+          _primaryLeads = false;
+          unawaited(_startFloor());
+        } else {
+          _primaryLeads = true;
+          unawaited(_stopFloor());
+          emit(state);
+        }
       case Unreachable():
         // The primary is out. Hand over to the floor, which reports its own
-        // Unreachable if the device is genuinely gone — that is the honest
-        // state, and it should come from whichever source can still see.
+        // state if it can still see — that is the honest answer, from whichever
+        // source can still see.
         _primaryLeads = false;
         unawaited(_startFloor());
       case Connecting():
