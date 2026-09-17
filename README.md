@@ -42,6 +42,18 @@ on your network, otherwise its IP. Deciding that is part of
 `?demo` runs the UI on scripted data with no relay and no speaker, so the same bundle can be
 shown to people who are not on the office network.
 
+## Common commands
+
+A [`justfile`](justfile) wraps the everyday commands, grouped:
+
+```
+just            # list them
+just run        # serve against the speaker (host= to override)
+just demo       # serve scripted data, no speaker needed
+just doctor     # can this machine reach the speaker?
+just check      # everything CI runs
+```
+
 ## Run the app
 
 ```bash
