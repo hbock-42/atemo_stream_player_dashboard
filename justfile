@@ -97,3 +97,8 @@ shots:
 [group('deploy')]
 deploy:
     relay/deploy/build_and_deploy.sh {{dest}}
+
+# One-time Spotify authorisation — writes the refresh token (see docs/spotify.md)
+[group('spotify')]
+spotify-setup:
+    cd relay && dart run bin/spotify_setup.dart

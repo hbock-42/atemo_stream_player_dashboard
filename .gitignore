@@ -33,3 +33,6 @@ relay/pubspec.lock
 
 # Claude Code agent worktrees
 .claude/worktrees/
+
+# Spotify credentials — never committed
+relay/spotify.json

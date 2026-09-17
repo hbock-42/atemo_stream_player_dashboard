@@ -15,7 +15,12 @@ import 'package:atemo_stream_player_viewer/cast/cast_channel.dart';
 import 'package:atemo_stream_player_viewer/cast/cast_client.dart';
 import 'package:atemo_stream_player_viewer/data/composite_source.dart';
 import 'package:atemo_stream_player_viewer/data/direct_cast_source.dart';
+import 'package:atemo_stream_player_viewer/data/spotify_auth.dart';
+import 'package:atemo_stream_player_viewer/data/spotify_io.dart';
+import 'package:atemo_stream_player_viewer/data/spotify_now_playing_mapper.dart';
+import 'package:atemo_stream_player_viewer/data/spotify_web_api_source.dart';
 import 'package:atemo_stream_player_viewer/data/txt_status_source.dart';
+import 'package:streamplayer_relay/spotify_config.dart';
 import 'package:atemo_stream_player_viewer/discovery/mdns_discovery.dart';
 import 'package:atemo_stream_player_viewer/domain/now_playing_source.dart';
 import 'package:atemo_stream_player_viewer/testing/fake_cast_device.dart';
@@ -97,18 +102,48 @@ Future<void> _run(List<String> arguments) async {
     },
   );
 
-  // Default: the live connection leads, the mDNS status line is the floor.
-  // The floor is not even polled while the connection is up; when it drops —
-  // device refusing senders, this host unable to open a socket, a reconnect
-  // in progress — the display degrades to the status line instead of going
-  // blank. --no-floor keeps the connection alone, for diagnosing it.
+  // --no-floor keeps the live connection alone, for diagnosing it.
   if (options.containsKey('no-floor')) {
     await _serve(source, options);
     return;
   }
+
+  // The composition, top to bottom: the live CASTV2 connection leads (rich,
+  // covers Google Cast senders like SoundCloud). When it has nothing — either
+  // idle, or because a Connect protocol it cannot see is playing — Spotify is
+  // consulted, if configured. Below that, the mDNS status line as a last
+  // resort. Each layer is started only when the one above it comes up empty,
+  // so Spotify is not polled while SoundCloud plays.
+  NowPlayingSource buildFloor() => _spotifyThenTxt();
   await _serve(
-    CompositeSource(primary: source, buildFloor: TxtStatusSource.new),
+    CompositeSource(primary: source, fallbackOnIdle: true, buildFloor: buildFloor),
     options,
+  );
+}
+
+/// Spotify over the mDNS status line, or just the status line when Spotify is
+/// not set up.
+NowPlayingSource _spotifyThenTxt() {
+  final config = SpotifyConfig.load();
+  if (config == null || !config.isComplete) return TxtStatusSource();
+
+  final auth = SpotifyAuth(
+    clientId: config.clientId,
+    clientSecret: config.clientSecret,
+    refreshToken: config.refreshToken,
+    exchange: realTokenEndpoint(
+      clientId: config.clientId,
+      clientSecret: config.clientSecret,
+    ),
+  );
+  final spotify = SpotifyWebApiSource(
+    fetch: realSpotifyFetcher(auth),
+    mapper: SpotifyNowPlayingMapper(deviceName: config.deviceName),
+  );
+  return CompositeSource(
+    primary: spotify,
+    fallbackOnIdle: true,
+    buildFloor: TxtStatusSource.new,
   );
 }
 
